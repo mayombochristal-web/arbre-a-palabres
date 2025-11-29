@@ -11,18 +11,17 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
-const mongoSanitize = require('express-mongo-sanitize'); // NOUVEAU
+const mongoSanitize = require('express-mongo-sanitize');
 const path = require('path');
 
 // Fichier de configuration de la base de données
 const connectDB = require('./config/database');
 
-// Importation des routes (ajustez les chemins si nécessaire)
+// Importation des routes
 const candidatsRoutes = require('./routes/candidats');
 const debatsRoutes = require('./routes/debats');
 const transactionsRoutes = require('./routes/transactions');
 const tropheesRoutes = require('./routes/trophees');
-// Assurez-vous d'importer vos autres routes (ex: auth, user)
 
 // ===============================================
 // 3. CONFIGURATION ET CONNEXION
@@ -46,7 +45,7 @@ const app = express();
 // Body parser
 app.use(express.json());
 
-// Nettoyage des données pour prévenir la NoSQL Injection (CORRECTION M1)
+// Nettoyage des données pour prévenir la NoSQL Injection
 app.use(mongoSanitize());
 
 // Configuration CORS (Cross-Origin Resource Sharing)
@@ -73,17 +72,44 @@ app.use('/api/', limiter); // Applique le limiteur à toutes les routes API
 app.use(`/${UPLOAD_PATH}`, express.static(path.join(__dirname, UPLOAD_PATH)));
 
 // ===============================================
-// 5. MONTAGE DES ROUTES
+// 5. ROUTES DE BASE ET SANTÉ
+// ===============================================
+
+// Route racine
+app.get('/', (req, res) => {
+  res.json({
+    success: true,
+    message: 'API Arbre à Palabres backend opérationnelle 🚀',
+    version: '1.0.0',
+    endpoints: {
+      candidats: '/api/candidats',
+      debats: '/api/debats',
+      transactions: '/api/transactions',
+      trophees: '/api/trophees'
+    }
+  });
+});
+
+// Route de santé pour Render
+app.get('/sante', (req, res) => {
+  res.status(200).json({ status: 'OK', timestamp: new Date().toISOString() });
+});
+
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'OK', timestamp: new Date().toISOString() });
+});
+
+// ===============================================
+// 6. MONTAGE DES ROUTES API
 // ===============================================
 
 app.use('/api/candidats', candidatsRoutes);
 app.use('/api/debats', debatsRoutes);
 app.use('/api/transactions', transactionsRoutes);
 app.use('/api/trophees', tropheesRoutes);
-// app.use('/api/auth', require('./routes/auth')); // Exemple pour d'autres routes
 
 // ===============================================
-// 6. GESTION DES ERREURS
+// 7. GESTION DES ERREURS
 // ===============================================
 
 // Gestion des routes non trouvées (404)
@@ -122,7 +148,7 @@ app.use((error, req, res, next) => {
 });
 
 // ===============================================
-// 7. DÉMARRAGE DU SERVEUR
+// 8. DÉMARRAGE DU SERVEUR
 // ===============================================
 
 const server = app.listen(PORT, () => {
