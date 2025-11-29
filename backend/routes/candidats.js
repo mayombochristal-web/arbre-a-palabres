@@ -43,10 +43,10 @@ router.post('/inscription',
         });
       }
 
-      // Vérifier les fichiers uploadés
-      if (!req.files || !req.files.carteEtudiant || !req.files.notes) {
+      // Vérifier les fichiers uploadés (carte étudiant obligatoire, notes optionnelles)
+      if (!req.files || !req.files.carteEtudiant) {
         return res.status(400).json({
-          error: 'Les documents (carte étudiante et notes) sont obligatoires'
+          error: 'Le document (carte étudiante) est obligatoire'
         });
       }
 
@@ -57,7 +57,7 @@ router.post('/inscription',
         nomEtablissement,
         fichiers: {
           carteEtudiant: req.files.carteEtudiant[0].path,
-          notes: req.files.notes[0].path,
+          notes: req.files.notes ? req.files.notes[0].path : null,
         }
       });
 
@@ -71,7 +71,7 @@ router.post('/inscription',
         nationalite,
         nomEtablissement,
         urlCarteEtudiant: req.files.carteEtudiant[0].path,
-        urlNotes: req.files.notes[0].path,
+        urlNotes: req.files.notes ? req.files.notes[0].path : null,
         categorie: resultatsCalculs.categorie,
         statutAdministratif: resultatsCalculs.statutAdministratif,
       });

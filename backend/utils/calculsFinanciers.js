@@ -129,8 +129,9 @@ function soumettreCandidature(donneesCandidat) {
     throw new Error("Le nom de l'établissement est requis");
   }
 
-  if (!fichiers?.carteEtudiant || !fichiers?.notes) {
-    throw new Error('Les documents (carte étudiante et notes) sont requis');
+  // Vérification uniquement de la carte étudiant (notes optionnelles)
+  if (!fichiers?.carteEtudiant) {
+    throw new Error('Le document (carte étudiante) est requis');
   }
 
   const { categorie, fraisInscription, age } = determinerCategorieEtFrais(dateNaissance);
