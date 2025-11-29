@@ -43,24 +43,6 @@ const app = express();
 // ===============================================
 
 // Body parser
-app.use(express.json());
-
-// Nettoyage des données pour prévenir la NoSQL Injection
-app.use(mongoSanitize());
-
-// Configuration CORS (Cross-Origin Resource Sharing)
-const corsOptions = {
-  origin: FRONTEND_URL,
-  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-  credentials: true,
-  optionsSuccessStatus: 204,
-};
-app.use(cors(corsOptions));
-
-// Sécurité HTTP Header avec Helmet
-app.use(helmet());
-
-// Limitation de débit (Rate Limiting)
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // Limite chaque IP à 100 requêtes par fenêtre (15 minutes)
