@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
 
 // Configuration d'axios
 const api = axios.create({
@@ -18,7 +18,7 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    
+
     console.log(`🔄 ${config.method?.toUpperCase()} ${config.url}`, config.data || '');
     return config;
   },
@@ -36,18 +36,18 @@ api.interceptors.response.use(
   },
   (error) => {
     console.error(`❌ Erreur ${error.response?.status} ${error.config?.url}:`, error.response?.data);
-    
+
     // Gestion des erreurs spécifiques
     if (error.response?.status === 401) {
       localStorage.removeItem('authToken');
       window.location.href = '/connexion';
     }
-    
+
     if (error.response?.status === 500) {
       // Erreur serveur
       return Promise.reject(new Error('Une erreur serveur est survenue. Veuillez réessayer.'));
     }
-    
+
     return Promise.reject(error.response?.data || error);
   }
 );
@@ -66,24 +66,24 @@ export const candidatService = {
         formData.append(key, candidatData[key]);
       }
     });
-    
+
     return api.post('/candidats/inscription', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
-  
+
   // Récupération
   getAll: (params = {}) => api.get('/candidats', { params }),
   getById: (id) => api.get(`/candidats/${id}`),
   getStatistiques: (id) => api.get(`/candidats/${id}/statistiques`),
-  
+
   // Mise à jour
   update: (id, candidatData) => api.put(`/candidats/${id}`, candidatData),
   updateScores: (id, scores) => api.patch(`/candidats/${id}/scores`, scores),
   validerPaiement: (id) => api.patch(`/candidats/${id}/valider-paiement`),
-  
+
   // Classement
-  getClassement: (categorie, params = {}) => 
+  getClassement: (categorie, params = {}) =>
     api.get(`/candidats/classement/${categorie}`, { params })
 };
 
@@ -92,16 +92,16 @@ export const debatService = {
   // Création
   createStandard: (debatData) => api.post('/debats/standard', debatData),
   createDefi: (defiData) => api.post('/debats/defi', defiData),
-  
+
   // Récupération
   getAll: (params = {}) => api.get('/debats', { params }),
   getById: (id) => api.get(`/debats/${id}`),
-  
+
   // Actions
   demarrer: (id) => api.patch(`/debats/${id}/demarrer`),
   cloturer: (id, vainqueurId) => api.patch(`/debats/${id}/cloturer`, { vainqueurId }),
   updateScores: (id, scores) => api.patch(`/debats/${id}/scores`, { scores }),
-  
+
   // Statistiques
   getStatistiques: () => api.get('/debats/statistiques/general')
 };
@@ -112,9 +112,9 @@ export const transactionService = {
   demanderRetrait: (retraitData) => api.post('/transactions/retrait', retraitData),
   validerRetrait: (id) => api.patch(`/transactions/${id}/valider`),
   rejeterRetrait: (id, raison) => api.patch(`/transactions/${id}/rejeter`, { raison }),
-  
+
   // Récupération
-  getByCandidat: (candidatId, params = {}) => 
+  getByCandidat: (candidatId, params = {}) =>
     api.get(`/transactions/candidat/${candidatId}`, { params }),
   getAll: (params = {}) => api.get('/transactions', { params })
 };
@@ -125,7 +125,7 @@ export const tropheeService = {
   create: (tropheeData) => api.post('/trophees', tropheeData),
   getAll: (params = {}) => api.get('/trophees', { params }),
   getHistorique: (id) => api.get(`/trophees/${id}/historique`),
-  
+
   // Actions
   attribuer: (id, candidatId) => api.patch(`/trophees/${id}/attribuer`, { candidatId }),
   retirer: (id, raison) => api.patch(`/trophees/${id}/retirer`, { raison })

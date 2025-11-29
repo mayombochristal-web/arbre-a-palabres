@@ -2,6 +2,44 @@
  * Utilitaires de formatage pour l'application
  */
 
+// NOTE: Ces fonctions de date et montant ont été déplacées depuis calculService.js pour centraliser le formatage.
+
+/**
+ * Formate un montant en FCFA
+ */
+export function formaterMontant(montant) {
+  return new Intl.NumberFormat('fr-FR', {
+    style: 'currency',
+    currency: 'XOF'
+  }).format(montant);
+}
+
+/**
+ * Formate une date sans heure
+ */
+export function formaterDate(date) {
+  if (!date) return 'N/A';
+  return new Date(date).toLocaleDateString('fr-FR', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+}
+
+/**
+ * Formate une date avec l'heure (C'est la fonction manquante)
+ */
+export function formaterDateHeure(date) {
+  if (!date) return 'N/A';
+  return new Date(date).toLocaleDateString('fr-FR', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
 /**
  * Formate un numéro de téléphone gabonais
  */
@@ -11,7 +49,7 @@ export function formaterTelephone(telephone) {
   // Supprimer tous les caractères non numériques
   const numeros = telephone.replace(/\D/g, '');
   
-  // Formater selon le format gabonais
+  // Formater selon le format gabonais (simplifié)
   if (numeros.startsWith('241')) {
     return `+241 ${numeros.slice(3, 5)} ${numeros.slice(5, 8)} ${numeros.slice(8)}`;
   } else if (numeros.startsWith('0')) {
@@ -39,47 +77,30 @@ export function formaterDuree(milliseconds) {
   const minutes = Math.floor(seconds / 60);
   const hours = Math.floor(minutes / 60);
   const days = Math.floor(hours / 24);
-
-  if (days > 0) {
-    return `${days} jour${days > 1 ? 's' : ''}`;
-  } else if (hours > 0) {
-    return `${hours} heure${hours > 1 ? 's' : ''}`;
-  } else if (minutes > 0) {
-    return `${minutes} minute${minutes > 1 ? 's' : ''}`;
-  } else {
-    return `${seconds} seconde${seconds > 1 ? 's' : ''}`;
-  }
+  
+  if (days > 0) return `${days}j ${hours % 24}h`;
+  if (hours > 0) return `${hours % 24}h ${minutes % 60}m`;
+  if (minutes > 0) return `${minutes % 60}m ${seconds % 60}s`;
+  return `${seconds % 60}s`;
 }
 
 /**
- * Formate un score sur 20
- */
-export function formaterScore(score) {
-  if (score === null || score === undefined) return 'N/A';
-  return score.toFixed(2);
-}
-
-/**
- * Formate un statut en texte lisible
+ * Formate le statut d'un candidat ou d'un débat
  */
 export function formaterStatut(statut) {
+  if (!statut) return 'Inconnu';
   const statuts = {
     'PAIEMENT_EN_ATTENTE': 'Paiement en attente',
     'ADMISSIBLE': 'Admissible',
     'ADMIS': 'Admis',
     'ELIMINE': 'Éliminé',
-    'SUSPENDU': 'Suspendu',
     'en_attente': 'En attente',
     'en_cours': 'En cours',
     'termine': 'Terminé',
-    'annule': 'Annulé',
-    'EN_ATTENTE': 'En attente',
-    'VALIDEE': 'Validée',
-    'REJETEE': 'Rejetée',
-    'COMPLETEE': 'Complétée'
+    'annule': 'Annulé'
   };
   
-  return statuts[statut] || statut;
+  return statuts[statut.toUpperCase()] || statut;
 }
 
 /**
@@ -129,22 +150,32 @@ export function validerEmail(email) {
 }
 
 /**
- * Valide un numéro de téléphone gabonais
+ * Valide un téléphone (format gabonais)
  */
 export function validerTelephone(telephone) {
-  const regex = /^(\+241|0)[0-9]{8}$/;
-  return regex.test(telephone.replace(/\s/g, ''));
+  // Supprimer tous les caractères non numériques
+  const numeros = telephone.replace(/\D/g, '');
+  // Vérification simple: 8 à 11 chiffres
+  return numeros.length >= 8 && numeros.length <= 11;
 }
 
-export default {
-  formaterTelephone,
-  formaterNom,
-  formaterDuree,
-  formaterScore,
-  formaterStatut,
-  formaterTypeTransaction,
-  genererInitiales,
-  tronquerTexte,
-  validerEmail,
-  validerTelephone
-};
+/**
+ * Formate le score d'un candidat
+ */
+export function formaterScore(score) {
+  return score !== undefined && score !== null ? score.toLocaleString('fr-FR') : 'N/A';
+}
+
+/**
+ * Formate le statut de transaction (ajouté pour la complétude)
+ */
+export function formaterStatutTransaction(statut) {
+  const statuts = {
+    'EN_ATTENTE': 'En attente',
+    'VALIDEE': 'Validée',
+    'REJETEE': 'Rejetée',
+    'COMPLETEE': 'Complétée'
+  };
+  
+  return statuts[statut] || statut;
+}

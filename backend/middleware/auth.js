@@ -1,5 +1,7 @@
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+const User = require('../models/User'); // Le chemin est déjà '../models/User', 
+                                         // si l'erreur persiste, cela signifie que le fichier User.js est manquant 
+                                         // ou mal nommé dans le dossier models.
 
 // Middleware pour protéger les routes
 const protect = async (req, res, next) => {
@@ -43,19 +45,4 @@ const admin = (req, res, next) => {
   }
 };
 
-// Middleware pour vérifier les rôles jury
-const jury = (req, res, next) => {
-  if (req.user && (req.user.role === 'admin' || req.user.role === 'jury')) {
-    next();
-  } else {
-    res.status(403).json({
-      error: 'Accès refusé, droits jury requis'
-    });
-  }
-};
-
-module.exports = {
-  protect,
-  admin,
-  jury
-};
+module.exports = { protect, admin };

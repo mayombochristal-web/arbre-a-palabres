@@ -1,8 +1,12 @@
 import React from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useNavigate, useLocation } from 'react-router-dom'; // Import de useNavigate et useLocation
 
-const Navbar = ({ activeTab, setActiveTab }) => {
+// Navbar n'a plus besoin des props activeTab et setActiveTab
+const Navbar = () => {
   const { isAuthenticated, hasRole } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation(); // Hook pour obtenir le chemin actuel
 
   const menuItems = [
     { id: 'accueil', label: 'Accueil', path: '/', public: true },
@@ -22,9 +26,18 @@ const Navbar = ({ activeTab, setActiveTab }) => {
     { id: 'nouveau-debat', label: 'Nouveau Débat', path: '/admin/nouveau-debat', admin: true },
   ];
 
+  // Fonction de navigation corrigée
   const handleNavigation = (path) => {
-    window.location.href = path;
+    // CORRECTION: Utilisation de navigate() au lieu de window.location.href
+    navigate(path); 
   };
+  
+  // Fonction pour déterminer si un onglet est actif (basé sur l'URL)
+  const isTabActive = (path) => {
+    // Vérifie si le chemin de la route commence par le chemin de l'élément (gestion des sous-routes)
+    return location.pathname === path || (path !== '/' && location.pathname.startsWith(path));
+  };
+
 
   return (
     <nav className="app-nav">
@@ -33,7 +46,8 @@ const Navbar = ({ activeTab, setActiveTab }) => {
         {menuItems.map(item => (
           <button
             key={item.id}
-            className={activeTab === item.id ? 'active' : ''}
+            // Changement: Utilisation de isTabActive pour la classe CSS
+            className={isTabActive(item.path) ? 'active' : ''}
             onClick={() => handleNavigation(item.path)}
           >
             {item.label}
@@ -44,7 +58,8 @@ const Navbar = ({ activeTab, setActiveTab }) => {
         {isAuthenticated && hasRole('admin') && adminItems.map(item => (
           <button
             key={item.id}
-            className={activeTab === item.id ? 'active' : ''}
+            // Changement: Utilisation de isTabActive pour la classe CSS
+            className={isTabActive(item.path) ? 'active' : ''}
             onClick={() => handleNavigation(item.path)}
           >
             {item.label}

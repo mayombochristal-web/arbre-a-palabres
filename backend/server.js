@@ -1,116 +1,142 @@
+// ===============================================
+// 1. CHARGEMENT DES VARIABLES D'ENVIRONNEMENT (DOIT ÊTRE LA PREMIÈRE LIGNE EXÉCUTABLE)
+// ===============================================
+require('dotenv').config();
+
+// ===============================================
+// 2. IMPORTATION DES DÉPENDANCES
+// ===============================================
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const mongoSanitize = require('express-mongo-sanitize'); // NOUVEAU
 const path = require('path');
-require('dotenv').config();
 
+// Fichier de configuration de la base de données
 const connectDB = require('./config/database');
 
-// Connexion à la base de données
+// Importation des routes (ajustez les chemins si nécessaire)
+const candidatsRoutes = require('./routes/candidats');
+const debatsRoutes = require('./routes/debats');
+const transactionsRoutes = require('./routes/transactions');
+const tropheesRoutes = require('./routes/trophees');
+// Assurez-vous d'importer vos autres routes (ex: auth, user)
+
+// ===============================================
+// 3. CONFIGURATION ET CONNEXION
+// ===============================================
+
+// Définition des variables d'environnement
+const PORT = process.env.PORT || 5000;
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+const UPLOAD_PATH = process.env.UPLOAD_PATH || 'uploads';
+
+// Exécute la connexion à la base de données
 connectDB();
 
+// Initialisation de l'application
 const app = express();
 
-// Middleware de sécurité
+// ===============================================
+// 4. MIDDLEWARES GLOBAUX ET DE SÉCURITÉ
+// ===============================================
+
+// Body parser
+app.use(express.json());
+
+// Nettoyage des données pour prévenir la NoSQL Injection (CORRECTION M1)
+app.use(mongoSanitize());
+
+// Configuration CORS (Cross-Origin Resource Sharing)
+const corsOptions = {
+  origin: FRONTEND_URL,
+  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+  credentials: true,
+  optionsSuccessStatus: 204,
+};
+app.use(cors(corsOptions));
+
+// Sécurité HTTP Header avec Helmet
 app.use(helmet());
 
-// Rate limiting
+// Limitation de débit (Rate Limiting)
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limite chaque IP à 100 requêtes par windowMs
+  max: 100, // Limite chaque IP à 100 requêtes par fenêtre (15 minutes)
+  message: 'Trop de requêtes depuis cette IP, veuillez réessayer après 15 minutes',
 });
-app.use(limiter);
+app.use('/api/', limiter); // Applique le limiteur à toutes les routes API
 
-// Middleware CORS
-app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-  credentials: true
-}));
+// Servir les fichiers statiques (images/documents uploadés)
+app.use(`/${UPLOAD_PATH}`, express.static(path.join(__dirname, UPLOAD_PATH)));
 
-// Middleware pour parser le JSON
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
+// ===============================================
+// 5. MONTAGE DES ROUTES
+// ===============================================
 
-// Servir les fichiers statics
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/api/candidats', candidatsRoutes);
+app.use('/api/debats', debatsRoutes);
+app.use('/api/transactions', transactionsRoutes);
+app.use('/api/trophees', tropheesRoutes);
+// app.use('/api/auth', require('./routes/auth')); // Exemple pour d'autres routes
 
-// Routes
-app.use('/api/candidats', require('./routes/candidats'));
-app.use('/api/debats', require('./routes/debats'));
-app.use('/api/transactions', require('./routes/transactions'));
-app.use('/api/trophees', require('./routes/trophees'));
+// ===============================================
+// 6. GESTION DES ERREURS
+// ===============================================
 
-// Route de santé
-app.get('/api/health', (req, res) => {
-  res.json({ 
-    success: true,
-    status: 'OK', 
-    message: 'L\'Arbre à Palabres API est en ligne',
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV
-  });
-});
-
-// Route pour les informations sur l'API
-app.get('/api', (req, res) => {
-  res.json({
-    success: true,
-    name: 'L\'Arbre à Palabres API',
-    version: '1.0.0',
-    description: 'API pour la plateforme de débats éducatifs',
-    endpoints: {
-      candidats: '/api/candidats',
-      debats: '/api/debats',
-      transactions: '/api/transactions',
-      trophees: '/api/trophees'
-    },
-    documentation: '/api/docs'
-  });
-});
-
-// Route 404
-app.use('*', (req, res) => {
-  res.status(404).json({ 
+// Gestion des routes non trouvées (404)
+app.use((req, res, next) => {
+  res.status(404).json({
     success: false,
-    error: 'Route non trouvée' 
+    error: 'Route non trouvée: ' + req.originalUrl,
   });
 });
 
-// Gestionnaire d'erreurs global
+// Gestionnaire d'erreurs global (Express le reconnaît par ses 4 arguments)
 app.use((error, req, res, next) => {
-  console.error('Erreur non gérée:', error);
-  
+  console.error('Erreur non gérée:', error.message, error.stack);
+
+  // Erreurs Mongoose/Validation
   if (error.name === 'ValidationError') {
-    const messages = Object.values(error.errors).map(val => val.message);
+    const messages = Object.values(error.errors).map((val) => val.message);
     return res.status(400).json({
       success: false,
-      error: messages.join(', ')
+      error: `Erreur de validation: ${messages.join(', ')}`,
     });
   }
-  
+
   if (error.name === 'CastError') {
     return res.status(400).json({
       success: false,
-      error: 'ID invalide'
+      error: 'ID ou format de donnée invalide.',
     });
   }
-  
-  res.status(500).json({
+
+  // Erreur Générique
+  res.status(error.status || 500).json({
     success: false,
-    error: process.env.NODE_ENV === 'development' ? error.message : 'Une erreur est survenue'
+    error: error.message || 'Erreur interne du serveur',
   });
 });
 
-// Démarrage du serveur
-const PORT = process.env.PORT || 5000;
+// ===============================================
+// 7. DÉMARRAGE DU SERVEUR
+// ===============================================
 
-app.listen(PORT, () => {
-  console.log(`🚀 Serveur démarré sur le port ${PORT}`);
-  console.log(`📊 Environnement: ${process.env.NODE_ENV}`);
-  console.log(`🔗 API disponible sur: http://localhost:${PORT}/api`);
-  console.log(`❤️  Route de santé: http://localhost:${PORT}/api/health`);
+const server = app.listen(PORT, () => {
+  console.log(
+    `✅ Serveur démarré en mode ${process.env.NODE_ENV} sur le port ${PORT}`
+  );
 });
 
+// Gérer les rejets de promesses non gérés
+process.on('unhandledRejection', (err, promise) => {
+  console.error(`❌ Erreur: ${err.message}`);
+  // Fermer le serveur et quitter le processus
+  server.close(() => process.exit(1));
+});
+
+// Exportez l'application pour Supertest
 module.exports = app;

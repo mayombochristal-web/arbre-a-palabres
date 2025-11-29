@@ -4,7 +4,7 @@ const Debat = require('../models/Debat');
 const Candidat = require('../models/Candidat');
 const Transaction = require('../models/Transaction');
 const Trophee = require('../models/Trophee');
-const { organiserNouveauDebatSimple, FRAIS_INSCRIPTION } = require('../utils/calculsFinanciers');
+const { organiserNouveauDebatSimple, creerDebatDefi, FRAIS_INSCRIPTION } = require('../utils/calculsFinanciers');
 const { protect, admin } = require('../middleware/auth');
 
 // @desc    Créer un nouveau débat standard
@@ -14,21 +14,19 @@ router.post('/standard', protect, admin, async (req, res) => {
   try {
     const { participantsIds, theme } = req.body;
 
-    // Récupérer les participants complets
-    const participants = await Candidat.find({ 
+    const participants = await Candidat.find({
       _id: { $in: participantsIds },
       statutAdministratif: 'ADMISSIBLE',
       fraisInscriptionPayes: true
     });
 
     if (participants.length !== 4) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        error: '4 participants admissibles avec frais payés requis' 
+        error: '4 participants admissibles avec frais payés requis'
       });
     }
 
-    // Vérifier que tous les participants ont la même catégorie
     const categorie = participants[0].categorie;
     if (!participants.every(p => p.categorie === categorie)) {
       return res.status(400).json({
@@ -37,66 +35,12 @@ router.post('/standard', protect, admin, async (req, res) => {
       });
     }
 
-    // Organiser le débat avec répartition simple
     const debatData = organiserNouveauDebatSimple(participants, theme);
-    debatData.created_by = req.user._id;
+    debatData.juge_id = req.user._id;
 
-    // Débiter les participants (frais de participation)
-    const fraisUnitaire = FRAIS_INSCRIPTION[categorie];
-    const transactions = [];
-
-    for (const participant of participants) {
-      // Vérifier que le participant a assez de solde
-      if (participant.soldeActuel < fraisUnitaire) {
-        return res.status(400).json({
-          success: false,
-          error: `Solde insuffisant pour ${participant.prenom} ${participant.nom}`
-        });
-      }
-
-      // Débiter le participant
-      participant.soldeActuel -= fraisUnitaire;
-
-      // Créer une transaction pour les frais de participation
-      const transaction = new Transaction({
-        candidat_id: participant._id,
-        type: 'FRAIS_INSCRIPTION', // Réutilisation du type pour frais de débat
-        montant: fraisUnitaire,
-        description: `Frais de participation au débat: ${theme}`,
-        statut: 'VALIDEE',
-        debat_id: null, // Sera mis à jour après création du débat
-        created_by: req.user._id
-      });
-
-      transactions.push(transaction);
-      await participant.save();
-    }
-
-    // Créer le débat en base
     const nouveauDebat = new Debat(debatData);
     await nouveauDebat.save();
 
-    // Mettre à jour les transactions avec l'ID du débat
-    for (const transaction of transactions) {
-      transaction.debat_id = nouveauDebat._id;
-      await transaction.save();
-      
-      // Ajouter la transaction au candidat
-      await Candidat.findByIdAndUpdate(transaction.candidat_id, {
-        $push: {
-          transactions: {
-            type: transaction.type,
-            montant: transaction.montant,
-            statut: transaction.statut,
-            description: transaction.description,
-            date: new Date(),
-            reference: transaction.reference
-          }
-        }
-      });
-    }
-
-    // Populer les données pour la réponse
     const debatComplet = await Debat.findById(nouveauDebat._id)
       .populate('participants_ids', 'nom prenom categorie soldeActuel scoreFinal');
 
@@ -116,9 +60,121 @@ router.post('/standard', protect, admin, async (req, res) => {
 
   } catch (error) {
     console.error('Erreur création débat:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: error.message 
+      error: error.message
+    });
+  }
+});
+
+// @desc    Créer un débat de défi avec mise en jeu
+// @route   POST /api/debats/defi
+// @access  Public
+router.post('/defi', async (req, res) => {
+  try {
+    const { participantsIds, miseUnitaire, theme } = req.body;
+
+    const participants = await Candidat.find({
+      _id: { $in: participantsIds },
+      statutAdministratif: 'ADMISSIBLE'
+    });
+
+    if (participants.length !== 4) {
+      return res.status(400).json({
+        success: false,
+        error: '4 participants requis pour un défi'
+      });
+    }
+
+    const participantsInsuffisants = participants.filter(
+      p => p.soldeActuel < miseUnitaire
+    );
+
+    if (participantsInsuffisants.length > 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Certains participants ont un solde insuffisant',
+        participantsInsuffisants: participantsInsuffisants.map(p => ({
+          id: p._id,
+          nom: `${p.prenom} ${p.nom}`,
+          solde: p.soldeActuel,
+          miseRequise: miseUnitaire
+        }))
+      });
+    }
+
+    const debatData = creerDebatDefi(participants, miseUnitaire, theme);
+
+    const transactions = [];
+    for (const participant of participants) {
+      participant.soldeActuel -= miseUnitaire;
+      await participant.save();
+
+      const transaction = new Transaction({
+        candidat_id: participant._id,
+        type: 'FRAIS_INSCRIPTION',
+        montant: miseUnitaire,
+        description: `Mise pour le défi: ${theme}`,
+        statut: 'VALIDEE',
+        debat_id: null
+      });
+      await transaction.save();
+      transactions.push(transaction);
+    }
+
+    const nouveauDebat = new Debat(debatData);
+    await nouveauDebat.save();
+
+    for (const transaction of transactions) {
+      transaction.debat_id = nouveauDebat._id;
+      await transaction.save();
+    }
+
+    const debatComplet = await Debat.findById(nouveauDebat._id)
+      .populate('participants_ids', 'nom prenom categorie soldeActuel');
+
+    res.status(201).json({
+      success: true,
+      message: 'Défi créé avec succès',
+      debat: debatComplet,
+      cagnotte: {
+        total: debatData.cagnotte_totale,
+        gainVainqueur: debatData.gain_vainqueur,
+        fraisOrganisation: debatData.frais_organisation
+      }
+    });
+
+  } catch (error) {
+    console.error('Erreur création défi:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// @desc    Obtenir les défis disponibles
+// @route   GET /api/debats/defis/disponibles
+// @access  Public
+router.get('/defis/disponibles', async (req, res) => {
+  try {
+    const defis = await Debat.find({
+      type_debat: 'defi',
+      statut: 'en_attente'
+    })
+      .populate('participants_ids', 'nom prenom categorie')
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      defis
+    });
+
+  } catch (error) {
+    console.error('Erreur récupération défis:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la récupération des défis'
     });
   }
 });
@@ -132,36 +188,32 @@ router.patch('/:id/cloturer', protect, admin, async (req, res) => {
 
     const debat = await Debat.findById(req.params.id)
       .populate('participants_ids');
-    
+
     if (!debat) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        error: 'Débat non trouvé' 
+        error: 'Débat non trouvé'
       });
     }
 
     if (debat.statut !== 'en_cours') {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        error: 'Débat déjà terminé ou non commencé' 
+        error: 'Débat déjà terminé ou non commencé'
       });
     }
 
-    // Vérifier que le vainqueur fait partie des participants
     const vainqueur = debat.participants_ids.find(p => p._id.toString() === vainqueurId);
     if (!vainqueur) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        error: 'Le vainqueur doit être un participant du débat' 
+        error: 'Le vainqueur doit être un participant du débat'
       });
     }
 
-    // Distribuer le gain au vainqueur
     vainqueur.soldeActuel += debat.gain_vainqueur;
     vainqueur.nombreVictoires += 1;
-    vainqueur.totalGains = (vainqueur.totalGains || 0) + debat.gain_vainqueur;
 
-    // Créer une transaction pour le gain
     const transactionGain = new Transaction({
       candidat_id: vainqueurId,
       type: 'GAIN_DEBAT',
@@ -174,37 +226,23 @@ router.patch('/:id/cloturer', protect, admin, async (req, res) => {
 
     await transactionGain.save();
 
-    // Ajouter la transaction au vainqueur
-    vainqueur.transactions.push({
-      type: 'GAIN_DEBAT',
-      montant: debat.gain_vainqueur,
-      statut: 'VALIDEE',
-      description: `Gain du débat: ${debat.theme_debat}`,
-      date: new Date(),
-      reference: transactionGain.reference
-    });
-
-    // Mettre à jour les statistiques des perdants
     const perdants = debat.participants_ids.filter(p => p._id.toString() !== vainqueurId);
     for (const perdant of perdants) {
       perdant.nombreDefaites += 1;
       await perdant.save();
     }
 
-    // Mettre à jour le débat
     debat.statut = 'termine';
-    debat.vainqueur_id = vainqueurId;
     debat.date_fin = new Date();
 
     await Promise.all([
       debat.save(),
-      vainqueur.save(),
-      transactionGain.save()
+      vainqueur.save()
     ]);
 
     const debatMisAJour = await Debat.findById(req.params.id)
       .populate('participants_ids', 'nom prenom soldeActuel')
-      .populate('vainqueur_id', 'nom prenom');
+      .populate('scores_participants.candidat_id', 'nom prenom');
 
     res.json({
       success: true,
@@ -219,9 +257,9 @@ router.patch('/:id/cloturer', protect, admin, async (req, res) => {
 
   } catch (error) {
     console.error('Erreur clôture débat:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors de la clôture du débat' 
+      error: 'Erreur lors de la clôture du débat'
     });
   }
 });
@@ -234,22 +272,22 @@ router.patch('/:id/demarrer', protect, admin, async (req, res) => {
     const debat = await Debat.findById(req.params.id);
 
     if (!debat) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        error: 'Débat non trouvé' 
+        error: 'Débat non trouvé'
       });
     }
 
     if (debat.statut !== 'en_attente') {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        error: 'Le débat ne peut pas être démarré dans son état actuel' 
+        error: 'Le débat ne peut pas être démarré dans son état actuel'
       });
     }
 
     debat.statut = 'en_cours';
     debat.date_debut = new Date();
-    
+
     await debat.save();
 
     res.json({
@@ -260,9 +298,9 @@ router.patch('/:id/demarrer', protect, admin, async (req, res) => {
 
   } catch (error) {
     console.error('Erreur démarrage débat:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors du démarrage du débat' 
+      error: 'Erreur lors du démarrage du débat'
     });
   }
 });
@@ -272,14 +310,14 @@ router.patch('/:id/demarrer', protect, admin, async (req, res) => {
 // @access  Public
 router.get('/', async (req, res) => {
   try {
-    const { 
-      statut, 
-      type, 
+    const {
+      statut,
+      type,
       categorie,
-      page = 1, 
-      limit = 10 
+      page = 1,
+      limit = 10
     } = req.query;
-    
+
     const query = {};
     if (statut) query.statut = statut;
     if (type) query.type_debat = type;
@@ -287,7 +325,7 @@ router.get('/', async (req, res) => {
 
     const debats = await Debat.find(query)
       .populate('participants_ids', 'nom prenom categorie scoreFinal')
-      .populate('vainqueur_id', 'nom prenom')
+      .populate('scores_participants.candidat_id', 'nom prenom')
       .populate('trophee_en_jeu', 'nom description')
       .sort({ date_debut: -1 })
       .limit(limit * 1)
@@ -305,9 +343,9 @@ router.get('/', async (req, res) => {
 
   } catch (error) {
     console.error('Erreur récupération débats:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors de la récupération des débats' 
+      error: 'Erreur lors de la récupération des débats'
     });
   }
 });
@@ -319,14 +357,13 @@ router.get('/:id', async (req, res) => {
   try {
     const debat = await Debat.findById(req.params.id)
       .populate('participants_ids')
-      .populate('vainqueur_id')
       .populate('trophee_en_jeu')
       .populate('scores_participants.candidat_id', 'nom prenom');
 
     if (!debat) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        error: 'Débat non trouvé' 
+        error: 'Débat non trouvé'
       });
     }
 
@@ -337,9 +374,9 @@ router.get('/:id', async (req, res) => {
 
   } catch (error) {
     console.error('Erreur récupération débat:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors de la récupération du débat' 
+      error: 'Erreur lors de la récupération du débat'
     });
   }
 });
@@ -353,20 +390,19 @@ router.patch('/:id/scores', protect, async (req, res) => {
     const debat = await Debat.findById(req.params.id);
 
     if (!debat) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        error: 'Débat non trouvé' 
+        error: 'Débat non trouvé'
       });
     }
 
     if (debat.statut !== 'en_cours') {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        error: 'Le débat doit être en cours pour mettre à jour les scores' 
+        error: 'Le débat doit être en cours pour mettre à jour les scores'
       });
     }
 
-    // Valider les scores
     for (const score of scores) {
       if (!score.candidat_id || score.score_final === undefined) {
         return res.status(400).json({
@@ -386,7 +422,6 @@ router.patch('/:id/scores', protect, async (req, res) => {
     debat.scores_participants = scores;
     await debat.save();
 
-    // Mettre à jour les scores des candidats
     for (const score of scores) {
       await Candidat.findByIdAndUpdate(score.candidat_id, {
         scoreFinal: score.score_final
@@ -401,9 +436,9 @@ router.patch('/:id/scores', protect, async (req, res) => {
 
   } catch (error) {
     console.error('Erreur mise à jour scores:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors de la mise à jour des scores' 
+      error: 'Erreur lors de la mise à jour des scores'
     });
   }
 });
@@ -416,7 +451,7 @@ router.get('/statistiques/general', async (req, res) => {
     const totalDebats = await Debat.countDocuments();
     const debatsTermines = await Debat.countDocuments({ statut: 'termine' });
     const debatsEnCours = await Debat.countDocuments({ statut: 'en_cours' });
-    
+
     const gainsTotaux = await Debat.aggregate([
       { $match: { statut: 'termine' } },
       { $group: { _id: null, total: { $sum: '$gain_vainqueur' } } }
@@ -431,6 +466,25 @@ router.get('/statistiques/general', async (req, res) => {
       { $group: { _id: '$categorie', count: { $sum: 1 } } }
     ]);
 
+    let participantsEleves = 0;
+    let participantsEtudiants = 0;
+    let fondsIncubation = 0;
+
+    debatsParCategorie.forEach(cat => {
+      const nbParticipants = cat.count * 4;
+      if (cat._id === 'Primaire' || cat._id === 'College/Lycee') {
+        participantsEleves += nbParticipants;
+        fondsIncubation += (nbParticipants * 250);
+      } else if (cat._id === 'Universitaire') {
+        participantsEtudiants += nbParticipants;
+        fondsIncubation += (nbParticipants * 500);
+      }
+    });
+
+    const objectifFonds = 50000;
+    const resteAtteindre = Math.max(0, objectifFonds - fondsIncubation);
+    const estViable = fondsIncubation >= objectifFonds;
+
     res.json({
       success: true,
       statistiques: {
@@ -439,15 +493,23 @@ router.get('/statistiques/general', async (req, res) => {
         debatsEnCours,
         gainsDistribues: gainsTotaux[0]?.total || 0,
         fraisOrganisation: fraisTotaux[0]?.total || 0,
-        debatsParCategorie
+        debatsParCategorie,
+        fondsElite: {
+          participantsEleves,
+          participantsEtudiants,
+          fondsAccumule: fondsIncubation,
+          objectif: objectifFonds,
+          resteAtteindre,
+          estViable
+        }
       }
     });
 
   } catch (error) {
     console.error('Erreur récupération statistiques:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors de la récupération des statistiques' 
+      error: 'Erreur lors de la récupération des statistiques'
     });
   }
 });

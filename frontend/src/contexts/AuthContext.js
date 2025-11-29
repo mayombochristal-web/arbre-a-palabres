@@ -19,7 +19,7 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const token = localStorage.getItem('authToken');
     const userData = localStorage.getItem('userData');
-    
+
     if (token && userData) {
       try {
         setUser(JSON.parse(userData));
@@ -30,7 +30,7 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem('userData');
       }
     }
-    
+
     setLoading(false);
   }, []);
 
@@ -38,12 +38,12 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     try {
       setLoading(true);
-      
+
       // Simulation de connexion - À remplacer par votre logique d'authentification
       const response = await new Promise((resolve) => {
         setTimeout(() => {
           // Ceci est une simulation - en production, faites un appel API réel
-          if (email === 'admin@arbrepalabres.ga' && password === 'admin123') {
+          if (email === 'admin@arbre-palabres.ga' && password === 'Admin123!') {
             resolve({
               data: {
                 success: true,
@@ -51,7 +51,7 @@ export const AuthProvider = ({ children }) => {
                 user: {
                   id: 1,
                   name: 'Administrateur',
-                  email: 'admin@arbrepalabres.ga',
+                  email: 'admin@arbre-palabres.ga',
                   role: 'admin'
                 }
               }
@@ -69,13 +69,13 @@ export const AuthProvider = ({ children }) => {
 
       if (response.data.success) {
         const { token, user } = response.data;
-        
+
         localStorage.setItem('authToken', token);
         localStorage.setItem('userData', JSON.stringify(user));
-        
+
         setUser(user);
         setIsAuthenticated(true);
-        
+
         return { success: true };
       } else {
         return { success: false, error: response.data.error };

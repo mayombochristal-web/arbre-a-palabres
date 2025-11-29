@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const crypto = require('crypto'); // NOUVEAU
 
 const transactionSchema = new mongoose.Schema({
   candidat_id: {
@@ -21,7 +22,8 @@ const transactionSchema = new mongoose.Schema({
   
   montant: {
     type: Number,
-    required: true
+    required: true,
+    min: 0
   },
   
   statut: {
@@ -38,7 +40,7 @@ const transactionSchema = new mongoose.Schema({
   reference: {
     type: String,
     unique: true,
-    sparse: true
+    sparse: true // Permet plusieurs documents avec 'null' mais un seul pour chaque valeur réelle
   },
   
   // Pour les gains de débats
@@ -51,14 +53,13 @@ const transactionSchema = new mongoose.Schema({
   // Pour les retraits
   methode_retrait: {
     type: String,
-    enum: ['AIRTEL_MONEY', 'MOOV_MONEY', 'BANQUE', 'ESPECES'],
+    enum: ['AIRTEL_MONEY', 'MOMO', 'VIREMENT_BANCAIRE', 'CASH'],
     default: null
   },
-  
   numero_compte: String,
   nom_beneficiaire: String,
   
-  // Suivi administratif
+  // Champs administratifs
   valide_par: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -77,26 +78,24 @@ const transactionSchema = new mongoose.Schema({
   created_by: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true
+    default: null // Rendu facultatif car les transactions d'inscription/retrait sont initiées par le candidat/système
   }
 }, {
   timestamps: true
 });
 
-// Index pour les performances
-transactionSchema.index({ candidat_id: 1, createdAt: -1 });
-transactionSchema.index({ type: 1, statut: 1 });
-transactionSchema.index({ reference: 1 });
-transactionSchema.index({ debat_id: 1 });
-
-// Middleware pour générer une référence avant sauvegarde
+// Middleware pour générer une référence avant sauvegarde (CORRECTION C1)
 transactionSchema.pre('save', async function(next) {
   if (this.isNew && !this.reference) {
     const prefix = this.type === 'RETRAIT' ? 'RET' : 
                   this.type === 'FRAIS_INSCRIPTION' ? 'FRA' : 'TRX';
     
-    const count = await mongoose.model('Transaction').countDocuments();
-    this.reference = `${prefix}${Date.now()}${count + 1}`;
+    // Génération d'un suffixe cryptographique aléatoire de 4 octets (8 caractères hex)
+    const randomSuffix = crypto.randomBytes(4).toString('hex');
+    
+    // La référence combine un préfixe, le timestamp et un identifiant aléatoire
+    // pour minimiser les collisions sans utiliser de transactions coûteuses.
+    this.reference = `${prefix}_${Date.now()}_${randomSuffix}`.toUpperCase();
   }
   next();
 });
@@ -106,15 +105,9 @@ transactionSchema.methods.peutValider = function() {
   return this.statut === 'EN_ATTENTE';
 };
 
-// Méthode pour compléter un retrait
-transactionSchema.methods.completerRetrait = function(adminId) {
-  if (this.type !== 'RETRAIT') {
-    throw new Error('Seuls les retraits peuvent être complétés');
-  }
-  
-  this.statut = 'COMPLETEE';
-  this.valide_par = adminId;
-  this.date_validation = new Date();
+// Méthode pour vérifier si une transaction est complète
+transactionSchema.methods.estComplete = function() {
+  return this.statut === 'COMPLETEE' || this.statut === 'VALIDEE';
 };
 
 module.exports = mongoose.model('Transaction', transactionSchema);

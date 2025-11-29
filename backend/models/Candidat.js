@@ -1,29 +1,8 @@
 const mongoose = require('mongoose');
 const validator = require('validator');
 
-const transactionSchema = new mongoose.Schema({
-  type: {
-    type: String,
-    enum: ['RETRAIT', 'GAIN_DEBAT', 'FRAIS_INSCRIPTION'],
-    required: true
-  },
-  montant: {
-    type: Number,
-    required: true,
-    min: 0
-  },
-  statut: {
-    type: String,
-    enum: ['EN_ATTENTE', 'VALIDEE', 'REJETEE', 'COMPLETEE'],
-    default: 'EN_ATTENTE'
-  },
-  description: String,
-  date: {
-    type: Date,
-    default: Date.now
-  },
-  reference: String
-}, { _id: true });
+// CORRECTION A1: Suppression du schéma de transaction redondant.
+// Le schéma de transaction complet est défini dans Transaction.js
 
 const candidatSchema = new mongoose.Schema({
   // Informations personnelles
@@ -43,114 +22,93 @@ const candidatSchema = new mongoose.Schema({
     type: Date,
     required: [true, 'La date de naissance est obligatoire']
   },
+  
+  // Contacts
   email: {
     type: String,
     required: [true, 'L\'email est obligatoire'],
     unique: true,
     lowercase: true,
-    validate: [validator.isEmail, 'Email invalide']
+    validate: [validator.isEmail, 'Veuillez fournir un email valide']
   },
   telephone: {
     type: String,
-    required: [true, 'Le téléphone est obligatoire'],
+    required: [true, 'Le numéro de téléphone est obligatoire'],
     unique: true,
-    match: [/^(\+241|0)[0-9]{8}$/, 'Numéro de téléphone gabonais invalide']
-  },
-  nationalite: {
-    type: String,
-    required: true,
-    default: 'Gabonaise',
-    enum: ['Gabonaise']
+    validate: {
+      validator: function(v) {
+        // Valide un numéro de téléphone gabonais (exemple) ou autre format international
+        return /^\+?[0-9]{8,15}$/.test(v); 
+      },
+      message: props => `${props.value} n'est pas un numéro de téléphone valide!`
+    }
   },
   
-  // Scolarité et catégorie
-  categorie: {
+  // Scolarité/Administration
+  nationalite: {
     type: String,
-    required: true,
-    enum: ['Primaire', 'College/Lycee', 'Universitaire']
+    required: [true, 'La nationalité est obligatoire'],
+    trim: true
   },
   nomEtablissement: {
     type: String,
     required: [true, 'Le nom de l\'établissement est obligatoire'],
     trim: true
   },
-  noteSynthese: {
-    type: Number,
-    min: 0,
-    max: 20,
-    default: 0
-  },
   
   // Documents
-  fichierCarteEtudiant: {
+  urlCarteEtudiant: String,
+  urlNotes: String,
+  
+  // Statut
+  statutAdministratif: {
     type: String,
-    required: [true, 'La carte d\'étudiant est obligatoire']
-  },
-  fichierNotes: {
-    type: String,
-    required: [true, 'Le relevé de notes est obligatoire']
+    enum: ['CANDIDAT', 'PAIEMENT_EN_ATTENTE', 'ADMISSIBLE', 'EXCLU'],
+    default: 'CANDIDAT'
   },
   
-  // Statut financier et administratif
+  categorie: {
+    type: String,
+    enum: ['Primaire', 'College/Lycee', 'Universitaire', 'Inconnu'],
+    default: 'Inconnu'
+  },
+  
   fraisInscriptionPayes: {
     type: Boolean,
     default: false
   },
+  
+  // Métriques du débat
+  scoreFinal: {
+    type: Number,
+    default: 0
+  },
+  nombreVictoires: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  nombreDefaites: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  
+  // Finances
   soldeActuel: {
     type: Number,
     default: 0,
     min: 0
   },
-  statutAdministratif: {
-    type: String,
-    enum: ['PAIEMENT_EN_ATTENTE', 'ADMISSIBLE', 'ADMIS', 'ELIMINE', 'SUSPENDU'],
-    default: 'PAIEMENT_EN_ATTENTE'
-  },
   
-  // Scores et évaluations
-  scoreEcrit: {
-    type: Number,
-    min: 0,
-    max: 20,
-    default: 0
-  },
-  scoreOral: {
-    type: Number,
-    min: 0,
-    max: 20,
-    default: 0
-  },
-  scoreFinal: {
-    type: Number,
-    min: 0,
-    max: 20,
-    default: 0
-  },
-  
-  // Statistiques de débats
-  nombreVictoires: {
-    type: Number,
-    default: 0
-  },
-  nombreDefaites: {
-    type: Number,
-    default: 0
-  },
-  totalGains: {
-    type: Number,
-    default: 0
-  },
-  
-  // Transactions
-  transactions: [transactionSchema],
-  
-  // Trophées
+  // Trophée Actuel
   tropheeActuel: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Trophee',
     default: null
   },
   
+  // Date d'inscription
   dateInscription: {
     type: Date,
     default: Date.now
@@ -170,8 +128,8 @@ const candidatSchema = new mongoose.Schema({
 candidatSchema.index({ categorie: 1, statutAdministratif: 1 });
 candidatSchema.index({ scoreFinal: -1 });
 candidatSchema.index({ soldeActuel: -1 });
-candidatSchema.index({ email: 1 });
-candidatSchema.index({ telephone: 1 });
+candidatSchema.index({ email: 1 }, { unique: true }); // Assurer l'unicité
+candidatSchema.index({ telephone: 1 }, { unique: true }); // Assurer l'unicité
 
 // Middleware pour calculer l'âge avant sauvegarde
 candidatSchema.pre('save', function(next) {
@@ -193,15 +151,14 @@ candidatSchema.pre('save', function(next) {
 // Méthode pour vérifier l'éligibilité
 candidatSchema.methods.estEligible = function() {
   return this.age >= 10 && 
-         this.age <= 40 && 
-         this.nationalite === 'Gabonaise' &&
-         this.fraisInscriptionPayes &&
-         this.statutAdministratif === 'ADMISSIBLE';
+         this.age <= 40 &&
+         this.statutAdministratif === 'ADMISSIBLE' &&
+         this.fraisInscriptionPayes === true;
 };
 
-// Méthode statique pour trouver les candidats par catégorie
-candidatSchema.statics.findByCategorie = function(categorie) {
-  return this.find({ categorie, statutAdministratif: 'ADMISSIBLE' });
+// Méthode pour obtenir le nombre de débats total
+candidatSchema.methods.nombreDebatsTotal = function() {
+    return this.nombreVictoires + this.nombreDefaites;
 };
 
 module.exports = mongoose.model('Candidat', candidatSchema);

@@ -1,35 +1,20 @@
-// Configuration des frais d'inscription par catégorie
-const FRAIS_INSCRIPTION = {
-  'Primaire': 500,
-  'College/Lycee': 1000, 
-  'Universitaire': 2000
-};
+// =======================================================
+// backend/utils/calculsFinanciers.js
+// Contient les logiques de calcul et les données statiques
+// =======================================================
 
-// Catégories basées sur l'âge
+// Définitions des catégories, âges et frais
 const CATEGORIES_AGE = {
   'Primaire': { min: 10, max: 12 },
   'College/Lycee': { min: 13, max: 18 },
   'Universitaire': { min: 19, max: 40 }
 };
 
-/**
- * Détermine la catégorie et les frais d'inscription basés sur l'âge
- */
-function determinerCategorieEtFrais(dateNaissance) {
-  const age = calculerAge(dateNaissance);
-  
-  for (const [categorie, limites] of Object.entries(CATEGORIES_AGE)) {
-    if (age >= limites.min && age <= limites.max) {
-      return {
-        categorie,
-        fraisInscription: FRAIS_INSCRIPTION[categorie],
-        age
-      };
-    }
-  }
-  
-  throw new Error('Âge hors limites (10-40 ans)');
-}
+const FRAIS_INSCRIPTION = {
+  'Primaire': 500,
+  'College/Lycee': 1000,
+  'Universitaire': 2000
+};
 
 /**
  * Calcule l'âge à partir de la date de naissance
@@ -39,12 +24,35 @@ function calculerAge(dateNaissance) {
   const birthDate = new Date(dateNaissance);
   let age = today.getFullYear() - birthDate.getFullYear();
   const monthDiff = today.getMonth() - birthDate.getMonth();
-  
+
   if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
     age--;
   }
-  
+
   return age;
+}
+
+/**
+ * Détermine la catégorie et les frais d'inscription basés sur l'âge
+ */
+function determinerCategorieEtFrais(dateNaissance) {
+  const age = calculerAge(dateNaissance);
+
+  if (age < 10 || age > 40) {
+    throw new Error(`Âge ${age} ans hors limites (10-40 ans).`);
+  }
+
+  for (const [categorie, limites] of Object.entries(CATEGORIES_AGE)) {
+    if (age >= limites.min && age <= limites.max) {
+      return {
+        categorie,
+        fraisInscription: FRAIS_INSCRIPTION[categorie],
+        age
+      };
+    }
+  }
+
+  throw new Error('Erreur interne de détermination de catégorie.');
 }
 
 /**
@@ -53,12 +61,20 @@ function calculerAge(dateNaissance) {
 function calculerRepartitionSimple(cagnotteTotale) {
   const fraisOrganisation = Math.round(cagnotteTotale * 0.25); // 25%
   const gainVainqueur = Math.round(cagnotteTotale * 0.75); // 75%
-  
-  // Validation
+
   if (fraisOrganisation + gainVainqueur !== cagnotteTotale) {
-    throw new Error('Incohérence dans le calcul de répartition simple');
+    const difference = cagnotteTotale - (fraisOrganisation + gainVainqueur);
+    const gainAjuste = gainVainqueur + difference;
+
+    return {
+      fraisOrganisation,
+      gainVainqueur: gainAjuste,
+      cagnotteTotale,
+      tauxFrais: 0.25,
+      tauxGain: 0.75
+    };
   }
-  
+
   return {
     fraisOrganisation,
     gainVainqueur,
@@ -72,29 +88,19 @@ function calculerRepartitionSimple(cagnotteTotale) {
  * Organise un nouveau débat avec répartition simple 25%/75%
  */
 function organiserNouveauDebatSimple(participants, theme) {
-  // Validation
   if (!participants || participants.length !== 4) {
     throw new Error('Un débat doit avoir exactement 4 participants');
   }
-  
-  // Vérification que tous les participants ont la même catégorie
+
   const categorie = participants[0].categorie;
   if (!participants.every(p => p.categorie === categorie)) {
     throw new Error('Tous les participants doivent être de la même catégorie');
   }
-  
-  // Vérification que tous les participants sont admissibles
-  if (!participants.every(p => p.statutAdministratif === 'ADMISSIBLE' && p.fraisInscriptionPayes)) {
-    throw new Error('Tous les participants doivent être admissibles avec frais payés');
-  }
-  
-  // Calcul de la cagnotte (frais unitaire × 4 participants)
+
   const fraisUnitaire = FRAIS_INSCRIPTION[categorie];
   const cagnotteTotale = fraisUnitaire * 4;
-  
-  // Calcul de la répartition simple
   const repartition = calculerRepartitionSimple(cagnotteTotale);
-  
+
   return {
     theme_debat: theme,
     participants_ids: participants.map(p => p._id),
@@ -114,23 +120,21 @@ function organiserNouveauDebatSimple(participants, theme) {
  */
 function soumettreCandidature(donneesCandidat) {
   const { dateNaissance, nationalite, nomEtablissement, fichiers } = donneesCandidat;
-  
-  // Vérification de l'éligibilité
+
   if (nationalite !== "Gabonaise") {
     throw new Error('La nationalité gabonaise est requise');
   }
-  
+
   if (!nomEtablissement) {
     throw new Error("Le nom de l'établissement est requis");
   }
-  
+
   if (!fichiers?.carteEtudiant || !fichiers?.notes) {
     throw new Error('Les documents (carte étudiante et notes) sont requis');
   }
-  
-  // Détermination de la catégorie et des frais
+
   const { categorie, fraisInscription, age } = determinerCategorieEtFrais(dateNaissance);
-  
+
   return {
     categorie,
     fraisInscription,
@@ -148,6 +152,46 @@ function calculerGainsDefi(montantMise, nombreParticipants = 4) {
   return calculerRepartitionSimple(cagnotteTotale);
 }
 
+/**
+ * Crée un débat de défi avec mise en jeu des gains
+ */
+function creerDebatDefi(participants, miseUnitaire, theme) {
+  if (!participants || participants.length !== 4) {
+    throw new Error('Un débat doit avoir exactement 4 participants');
+  }
+
+  if (miseUnitaire <= 0) {
+    throw new Error('La mise unitaire doit être positive');
+  }
+
+  const participantsInsuffisants = participants.filter(p => p.soldeActuel < miseUnitaire);
+  if (participantsInsuffisants.length > 0) {
+    const noms = participantsInsuffisants.map(p => `${p.prenom} ${p.nom}`).join(', ');
+    throw new Error(`Solde insuffisant pour: ${noms}`);
+  }
+
+  const categorie = participants[0].categorie;
+  if (!participants.every(p => p.categorie === categorie)) {
+    throw new Error('Tous les participants doivent être de la même catégorie');
+  }
+
+  const cagnotteTotale = miseUnitaire * 4;
+  const repartition = calculerRepartitionSimple(cagnotteTotale);
+
+  return {
+    theme_debat: theme,
+    participants_ids: participants.map(p => p._id),
+    categorie: categorie,
+    type_debat: 'defi',
+    cagnotte_totale: repartition.cagnotteTotale,
+    frais_organisation: repartition.fraisOrganisation,
+    gain_vainqueur: repartition.gainVainqueur,
+    source_financement: 'Mise en Jeu',
+    frais_unitaire: miseUnitaire,
+    statut: 'en_attente'
+  };
+}
+
 module.exports = {
   FRAIS_INSCRIPTION,
   CATEGORIES_AGE,
@@ -155,5 +199,6 @@ module.exports = {
   calculerRepartitionSimple,
   organiserNouveauDebatSimple,
   soumettreCandidature,
-  calculerGainsDefi
+  calculerGainsDefi,
+  creerDebatDefi
 };

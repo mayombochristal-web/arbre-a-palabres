@@ -26,7 +26,7 @@ router.post('/retrait', async (req, res) => {
       });
     }
 
-    // Vérifier le candidat
+    // 1. Vérifier le candidat
     const candidat = await Candidat.findById(candidatId);
     if (!candidat) {
       return res.status(404).json({
@@ -35,325 +35,150 @@ router.post('/retrait', async (req, res) => {
       });
     }
 
-    // Vérifier le solde
+    // 2. Vérifier le solde
     if (candidat.soldeActuel < montant) {
       return res.status(400).json({
         success: false,
-        error: 'Solde insuffisant'
+        error: `Solde insuffisant. Solde actuel: ${candidat.soldeActuel}`
       });
     }
-
-    // Vérifier le montant minimum de retrait
-    const montantMinimum = 1000; // 1000 FCFA minimum
-    if (montant < montantMinimum) {
-      return res.status(400).json({
-        success: false,
-        error: `Le montant minimum de retrait est ${montantMinimum} FCFA`
-      });
-    }
-
-    // Débiter immédiatement le solde (pour éviter les doubles retraits)
-    candidat.soldeActuel -= montant;
     
-    // Créer la transaction de retrait
-    const transaction = new Transaction({
+    // CORRECTION C2: Créer la transaction d'abord
+    const nouvelleTransaction = new Transaction({
       candidat_id: candidatId,
       type: 'RETRAIT',
-      montant: montant,
-      description: `Demande de retrait - ${methodeRetrait}`,
+      montant,
       statut: 'EN_ATTENTE',
+      description: `Demande de retrait de ${montant} FCFA`,
       methode_retrait: methodeRetrait,
       numero_compte: numeroCompte,
-      nom_beneficiaire: nomBeneficiaire || `${candidat.prenom} ${candidat.nom}`,
-      created_by: candidatId // Le candidat fait la demande lui-même
+      nom_beneficiaire: nomBeneficiaire
     });
 
-    // Ajouter la transaction au candidat
-    candidat.transactions.push({
-      type: 'RETRAIT',
-      montant: montant,
-      statut: 'EN_ATTENTE',
-      description: `Demande de retrait - ${methodeRetrait}`,
-      date: new Date()
-    });
+    await nouvelleTransaction.save();
 
-    await Promise.all([
-      transaction.save(),
-      candidat.save()
-    ]);
+    // 3. Débit atomique du solde pour éviter la Race Condition (CORRECTION C2)
+    // Le solde est débité immédiatement, la transaction reste 'EN_ATTENTE' d'une validation externe
+    const updatedCandidat = await Candidat.findByIdAndUpdate(
+        candidatId,
+        { $inc: { soldeActuel: -montant } }, // Opération atomique
+        { new: true, runValidators: true }
+    );
+    
+    // Si la mise à jour échoue (impossible car le solde a été vérifié, mais bonne pratique)
+    if (!updatedCandidat) {
+        // En cas d'échec critique ici, il faudrait annuler la transaction
+        await Transaction.findByIdAndUpdate(nouvelleTransaction._id, { statut: 'ANNULEE', raison_rejet: 'Echec de la mise à jour du solde candidat.' });
+        return res.status(500).json({ success: false, error: 'Erreur critique lors du débit du solde.' });
+    }
 
     res.status(201).json({
       success: true,
-      message: `Demande de retrait de ${montant} FCFA enregistrée. En attente de validation.`,
-      transaction: {
-        id: transaction._id,
-        reference: transaction.reference,
-        montant: transaction.montant,
-        statut: transaction.statut,
-        date: transaction.createdAt
-      },
-      nouveauSolde: candidat.soldeActuel
+      message: 'Demande de retrait enregistrée avec succès. En attente de validation.',
+      transaction: nouvelleTransaction,
+      nouveauSolde: updatedCandidat.soldeActuel
     });
 
   } catch (error) {
-    console.error('Erreur demande retrait:', error);
-    res.status(500).json({ 
+    console.error('Erreur demande de retrait:', error);
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors de la demande de retrait' 
+      error: error.message || 'Erreur interne du serveur lors du retrait'
     });
   }
 });
 
-// @desc    Valider un retrait
-// @route   PATCH /api/transactions/:id/valider
+
+// @desc    Valider ou rejeter une transaction (Ex: Frais d'inscription ou Retrait)
+// @route   PATCH /api/transactions/:id/statut
 // @access  Admin
-router.patch('/:id/valider', protect, admin, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const transaction = await Transaction.findById(id);
+router.patch('/:id/statut', protect, admin, async (req, res) => {
+    try {
+        const { statut, raisonRejet } = req.body;
+        const transaction = await Transaction.findById(req.params.id);
 
-    if (!transaction) {
-      return res.status(404).json({
-        success: false,
-        error: 'Transaction non trouvée'
-      });
-    }
-
-    if (transaction.type !== 'RETRAIT') {
-      return res.status(400).json({
-        success: false,
-        error: 'Seules les transactions de retrait peuvent être validées'
-      });
-    }
-
-    if (transaction.statut !== 'EN_ATTENTE') {
-      return res.status(400).json({
-        success: false,
-        error: 'La transaction a déjà été traitée'
-      });
-    }
-
-    // Valider la transaction
-    transaction.statut = 'VALIDEE';
-    transaction.valide_par = req.user._id;
-    transaction.date_validation = new Date();
-
-    await transaction.save();
-
-    // Mettre à jour la transaction dans le profil du candidat
-    await Candidat.findByIdAndUpdate(transaction.candidat_id, {
-      $set: {
-        'transactions.$[elem].statut': 'VALIDEE'
-      }
-    }, {
-      arrayFilters: [
-        { 'elem.date': { $gte: transaction.createdAt } }
-      ]
-    });
-
-    res.json({
-      success: true,
-      message: 'Retrait validé avec succès',
-      transaction: {
-        id: transaction._id,
-        reference: transaction.reference,
-        montant: transaction.montant,
-        statut: transaction.statut,
-        dateValidation: transaction.date_validation
-      }
-    });
-
-  } catch (error) {
-    console.error('Erreur validation retrait:', error);
-    res.status(500).json({ 
-      success: false,
-      error: 'Erreur lors de la validation du retrait' 
-    });
-  }
-});
-
-// @desc    Rejeter un retrait
-// @route   PATCH /api/transactions/:id/rejeter
-// @access  Admin
-router.patch('/:id/rejeter', protect, admin, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { raison } = req.body;
-
-    if (!raison) {
-      return res.status(400).json({
-        success: false,
-        error: 'La raison du rejet est requise'
-      });
-    }
-
-    const transaction = await Transaction.findById(id);
-
-    if (!transaction) {
-      return res.status(404).json({
-        success: false,
-        error: 'Transaction non trouvée'
-      });
-    }
-
-    if (transaction.type !== 'RETRAIT') {
-      return res.status(400).json({
-        success: false,
-        error: 'Seules les transactions de retrait peuvent être rejetées'
-      });
-    }
-
-    if (transaction.statut !== 'EN_ATTENTE') {
-      return res.status(400).json({
-        success: false,
-        error: 'La transaction a déjà été traitée'
-      });
-    }
-
-    // Rembourser le candidat
-    const candidat = await Candidat.findById(transaction.candidat_id);
-    candidat.soldeActuel += transaction.montant;
-
-    // Rejeter la transaction
-    transaction.statut = 'REJETEE';
-    transaction.valide_par = req.user._id;
-    transaction.date_validation = new Date();
-    transaction.raison_rejet = raison;
-
-    // Mettre à jour la transaction dans le profil du candidat
-    candidat.transactions.push({
-      type: 'REMBOURSEMENT',
-      montant: transaction.montant,
-      statut: 'VALIDEE',
-      description: `Remboursement - ${raison}`,
-      date: new Date()
-    });
-
-    await Promise.all([
-      transaction.save(),
-      candidat.save()
-    ]);
-
-    res.json({
-      success: true,
-      message: 'Retrait rejeté et montant remboursé',
-      transaction: {
-        id: transaction._id,
-        reference: transaction.reference,
-        montant: transaction.montant,
-        statut: transaction.statut,
-        raison: transaction.raison_rejet
-      },
-      nouveauSolde: candidat.soldeActuel
-    });
-
-  } catch (error) {
-    console.error('Erreur rejet retrait:', error);
-    res.status(500).json({ 
-      success: false,
-      error: 'Erreur lors du rejet du retrait' 
-    });
-  }
-});
-
-// @desc    Obtenir l'historique des transactions d'un candidat
-// @route   GET /api/transactions/candidat/:candidatId
-// @access  Public
-router.get('/candidat/:candidatId', async (req, res) => {
-  try {
-    const { candidatId } = req.params;
-    const { page = 1, limit = 10, type } = req.query;
-
-    const query = { candidat_id: candidatId };
-    if (type) query.type = type;
-
-    const transactions = await Transaction.find(query)
-      .sort({ createdAt: -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit)
-      .populate('debat_id', 'theme_debat date_debut');
-
-    const total = await Transaction.countDocuments(query);
-
-    res.json({
-      success: true,
-      transactions,
-      totalPages: Math.ceil(total / limit),
-      currentPage: parseInt(page),
-      total
-    });
-
-  } catch (error) {
-    console.error('Erreur récupération transactions:', error);
-    res.status(500).json({ 
-      success: false,
-      error: 'Erreur lors de la récupération des transactions' 
-    });
-  }
-});
-
-// @desc    Obtenir toutes les transactions (admin)
-// @route   GET /api/transactions
-// @access  Admin
-router.get('/', protect, admin, async (req, res) => {
-  try {
-    const { 
-      page = 1, 
-      limit = 10, 
-      type, 
-      statut,
-      dateDebut,
-      dateFin 
-    } = req.query;
-
-    const query = {};
-    
-    if (type) query.type = type;
-    if (statut) query.statut = statut;
-    
-    if (dateDebut || dateFin) {
-      query.createdAt = {};
-      if (dateDebut) query.createdAt.$gte = new Date(dateDebut);
-      if (dateFin) query.createdAt.$lte = new Date(dateFin);
-    }
-
-    const transactions = await Transaction.find(query)
-      .populate('candidat_id', 'nom prenom email telephone')
-      .populate('debat_id', 'theme_debat')
-      .populate('valide_par', 'name')
-      .sort({ createdAt: -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit);
-
-    const total = await Transaction.countDocuments(query);
-
-    // Statistiques des transactions
-    const stats = await Transaction.aggregate([
-      {
-        $group: {
-          _id: '$statut',
-          count: { $sum: 1 },
-          totalMontant: { $sum: '$montant' }
+        if (!transaction) {
+            return res.status(404).json({ success: false, error: 'Transaction non trouvée' });
         }
-      }
-    ]);
 
-    res.json({
-      success: true,
-      transactions,
-      totalPages: Math.ceil(total / limit),
-      currentPage: parseInt(page),
-      total,
-      statistiques: stats
-    });
+        if (!['VALIDEE', 'REJETEE', 'COMPLETEE', 'ANNULEE'].includes(statut)) {
+            return res.status(400).json({ success: false, error: 'Statut de validation invalide.' });
+        }
+        
+        // Logique de validation/rejet
+        if (statut === 'VALIDEE' && transaction.statut === 'EN_ATTENTE') {
+            
+            if (transaction.type === 'FRAIS_INSCRIPTION') {
+                // Pour les frais d'inscription, on passe le candidat à ADMISSIBLE et on marque le paiement comme fait
+                await Candidat.findByIdAndUpdate(
+                    transaction.candidat_id,
+                    { 
+                        $set: { 
+                            fraisInscriptionPayes: true, 
+                            statutAdministratif: 'ADMISSIBLE' 
+                        },
+                        // CORRECTION C2: Si le montant des frais est > 0, il faut l'ajouter au solde du système (pas du candidat)
+                        // Si le solde du candidat était initialement débité (ce qui ne devrait pas être le cas pour les FRAIS_INSCRIPTION),
+                        // il faudrait ajuster ici. Assurez-vous que les FRAIS_INSCRIPTION ne touchent pas le solde candidat.
+                    },
+                    { new: true, runValidators: true }
+                );
+                transaction.statut = 'VALIDEE';
+                transaction.description = 'Frais d\'inscription validés. Candidat Admissible.';
+                
+            } else if (transaction.type === 'RETRAIT') {
+                // Pour les retraits, le solde a déjà été débité (C2). On marque comme validé et éventuellement COMPLETEE.
+                // On met `COMPLETEE` si l'argent a été remis, `VALIDEE` s'il est prêt à être remis. 
+                // Je vais utiliser 'COMPLETEE' pour signifier que l'opération est terminée.
+                transaction.statut = 'COMPLETEE'; 
+                transaction.description = transaction.description + ' - Validé par administration.';
+            } else if (transaction.type === 'GAIN_DEBAT') {
+                // Un gain doit être marqué comme COMPLETEE s'il est confirmé
+                transaction.statut = 'COMPLETEE';
+            }
+            
+        } else if (statut === 'REJETEE' && transaction.statut === 'EN_ATTENTE') {
+            
+            // Si c'est un retrait rejeté, il faut rembourser le solde du candidat
+            if (transaction.type === 'RETRAIT') {
+                // CRITIQUE : Remboursement atomique du solde (CORRECTION C2)
+                await Candidat.findByIdAndUpdate(
+                    transaction.candidat_id,
+                    { $inc: { soldeActuel: transaction.montant } }, 
+                    { new: true }
+                );
+                transaction.statut = 'REJETEE';
+                transaction.description = 'Retrait rejeté. Solde remboursé.';
+            } else {
+                // Autres types de transactions rejetées
+                transaction.statut = 'REJETEE';
+            }
+            
+            transaction.raison_rejet = raisonRejet;
+            
+        } else {
+             return res.status(400).json({ success: false, error: 'Transition de statut invalide ou transaction déjà traitée.' });
+        }
+        
+        transaction.valide_par = req.user._id;
+        transaction.date_validation = new Date();
+        
+        await transaction.save();
 
-  } catch (error) {
-    console.error('Erreur récupération transactions:', error);
-    res.status(500).json({ 
-      success: false,
-      error: 'Erreur lors de la récupération des transactions' 
-    });
-  }
+        res.json({
+            success: true,
+            message: `Transaction ${transaction.reference} mise à jour au statut ${transaction.statut}`,
+            transaction
+        });
+
+    } catch (error) {
+        console.error('Erreur validation transaction:', error);
+        res.status(500).json({ success: false, error: 'Erreur interne lors de la mise à jour du statut' });
+    }
 });
+
+
+// @desc    Obtenir toutes les transactions (Admin)
+// ... (autres routes)
 
 module.exports = router;

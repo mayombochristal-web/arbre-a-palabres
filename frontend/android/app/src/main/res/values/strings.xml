@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Arbre à Palabres</string>
+    <string name="title_activity_main">Arbre à Palabres</string>
+    <string name="package_name">com.arbreapalabres.app</string>
+    <string name="custom_url_scheme">com.arbreapalabres.app</string>
+</resources>

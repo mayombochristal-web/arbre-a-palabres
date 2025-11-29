@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 
+// Schéma imbriqué pour l'historique
 const historiqueProprietaireSchema = new mongoose.Schema({
   candidat_id: {
     type: mongoose.Schema.Types.ObjectId,
@@ -50,28 +51,19 @@ const tropheeSchema = new mongoose.Schema({
     enum: ['Primaire', 'College/Lycee', 'Universitaire']
   },
   
-  image: {
+  image: String,
+  
+  // Statut
+  statut: {
     type: String,
-    default: null
+    enum: ['DISPONIBLE', 'ATTRIBUE', 'HORS_SERVICE'],
+    default: 'DISPONIBLE'
   },
   
   proprietaire_actuel: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Candidat',
     default: null
-  },
-  
-  historique_proprietaires: [historiqueProprietaireSchema],
-  
-  statut: {
-    type: String,
-    enum: ['DISPONIBLE', 'ATTRIBUE', 'RETIRE', 'EN_RESTAURATION'],
-    default: 'DISPONIBLE'
-  },
-  
-  date_creation: {
-    type: Date,
-    default: Date.now
   },
   
   date_derniere_attribution: {
@@ -84,6 +76,10 @@ const tropheeSchema = new mongoose.Schema({
     default: 0
   },
   
+  // Historique des propriétaires
+  historique_proprietaires: [historiqueProprietaireSchema],
+  
+  // Admin
   created_by: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -93,18 +89,13 @@ const tropheeSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Index pour les performances
-tropheeSchema.index({ categorie_requise: 1, statut: 1 });
-tropheeSchema.index({ proprietaire_actuel: 1 });
-
-// Middleware pour calculer la durée de possession avant sauvegarde
+// Middleware pour vérifier la cohérence du propriétaire
 tropheeSchema.pre('save', function(next) {
-  if (this.historique_proprietaires.length > 0) {
-    const dernierProprietaire = this.historique_proprietaires[this.historique_proprietaires.length - 1];
-    
-    if (dernierProprietaire.date_perte && dernierProprietaire.date_acquisition) {
-      const duree = Math.floor((dernierProprietaire.date_perte - dernierProprietaire.date_acquisition) / (1000 * 60 * 60 * 24));
-      dernierProprietaire.duree_possession = duree;
+  if (this.isModified('proprietaire_actuel')) {
+    if (this.proprietaire_actuel && this.statut !== 'ATTRIBUE') {
+      next(new Error('Un trophée avec un propriétaire doit être au statut ATTRIBUE.'));
+    } else if (!this.proprietaire_actuel && this.statut === 'ATTRIBUE') {
+      next(new Error('Un trophée au statut ATTRIBUE doit avoir un propriétaire actuel.'));
     }
   }
   next();
@@ -129,7 +120,7 @@ tropheeSchema.methods.attribuer = function(candidatId, raison = 'VICTOIRE_DEBAT'
   this.nombre_changements += 1;
 };
 
-// Méthode pour retirer le trophée
+// Méthode pour retirer le trophée (CORRECTION A3)
 tropheeSchema.methods.retirer = function(raison = 'ADMINISTRATIF') {
   if (this.statut !== 'ATTRIBUE') {
     throw new Error('Le trophée n\'est pas actuellement attribué');
@@ -138,16 +129,20 @@ tropheeSchema.methods.retirer = function(raison = 'ADMINISTRATIF') {
   // Mettre à jour le dernier propriétaire dans l'historique
   if (this.historique_proprietaires.length > 0) {
     const dernierProprietaire = this.historique_proprietaires[this.historique_proprietaires.length - 1];
-    dernierProprietaire.date_perte = new Date();
-    dernierProprietaire.raison_perte = raison;
     
-    // Calculer la durée de possession
-    const duree = Math.floor((dernierProprietaire.date_perte - dernierProprietaire.date_acquisition) / (1000 * 60 * 60 * 24));
-    dernierProprietaire.duree_possession = duree;
+    // Calcul de la durée de possession en jours (CORRECTION A3)
+    const datePerte = new Date();
+    const dateAcquisition = dernierProprietaire.date_acquisition;
+    const diffTime = Math.abs(datePerte.getTime() - dateAcquisition.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    dernierProprietaire.date_perte = datePerte;
+    dernierProprietaire.raison_perte = raison;
+    dernierProprietaire.duree_possession = diffDays; // Stocke la durée en jours
   }
   
   this.proprietaire_actuel = null;
-  this.statut = 'DISPONIBLE';
+  this.statut = 'DISPONIBLE'; // Repasse en disponible
 };
 
 module.exports = mongoose.model('Trophee', tropheeSchema);

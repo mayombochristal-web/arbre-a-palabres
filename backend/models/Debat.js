@@ -1,5 +1,31 @@
 const mongoose = require('mongoose');
 
+// Schéma pour les scores
+const scoreParticipantSchema = new mongoose.Schema({
+  candidat_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Candidat',
+    required: true
+  },
+  score_arguments: {
+    type: Number,
+    default: 0
+  },
+  score_style: {
+    type: Number,
+    default: 0
+  },
+  score_final: {
+    type: Number,
+    default: 0
+  },
+  rang: { // 1er, 2e, 3e, 4e
+    type: Number,
+    default: null
+  }
+}, { _id: false });
+
+
 const debatSchema = new mongoose.Schema({
   theme_debat: {
     type: String,
@@ -14,6 +40,7 @@ const debatSchema = new mongoose.Schema({
     required: true,
     validate: {
       validator: function(participants) {
+        // Validation côté Mongoose pour s'assurer qu'il y ait exactement 4 participants
         return participants.length === 4;
       },
       message: 'Un débat doit avoir exactement 4 participants'
@@ -48,25 +75,17 @@ const debatSchema = new mongoose.Schema({
     min: 0
   },
   
-  source_financement: {
-    type: String,
-    required: true,
-    enum: ['Candidats', 'Organisation', 'Candidats/Organisation', 'Don'],
-    default: 'Candidats'
-  },
+  // Scores
+  scores_participants: [scoreParticipantSchema],
   
+  // Statut
   statut: {
     type: String,
     enum: ['en_attente', 'en_cours', 'termine', 'annule'],
     default: 'en_attente'
   },
   
-  vainqueur_id: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Candidat',
-    default: null
-  },
-  
+  // Dates
   date_debut: {
     type: Date,
     default: Date.now
@@ -77,40 +96,8 @@ const debatSchema = new mongoose.Schema({
     default: null
   },
   
-  type_debat: {
-    type: String,
-    enum: ['standard', 'defi', 'tournoi'],
-    default: 'standard'
-  },
-  
-  // Pour les débats de défi
-  trophee_en_jeu: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Trophee',
-    default: null
-  },
-  
-  // Informations d'évaluation
-  jury_ids: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Jury'
-  }],
-  
-  scores_participants: [{
-    candidat_id: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Candidat'
-    },
-    score_ecrit: Number,
-    score_oral: Number,
-    score_final: Number,
-    rang: Number
-  }],
-  
-  description: String,
-  regles_speciales: [String],
-  
-  created_by: {
+  // Référence aux juges (ou modérateur)
+  juge_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
@@ -135,6 +122,7 @@ debatSchema.methods.peutDemarrer = function() {
 debatSchema.methods.calculerClassement = function() {
   if (this.scores_participants.length === 0) return null;
   
+  // Trie en ordre décroissant
   const scoresAvecRang = [...this.scores_participants]
     .sort((a, b) => b.score_final - a.score_final)
     .map((score, index) => ({
@@ -145,18 +133,27 @@ debatSchema.methods.calculerClassement = function() {
   return scoresAvecRang;
 };
 
-// Middleware pour valider la cohérence financière
+// Middleware pour valider la cohérence financière (CORRECTION C3)
 debatSchema.pre('save', function(next) {
+  // Cette validation suppose que la cagnotte totale est la somme des frais unitaires de 4 participants
   if (this.isModified('cagnotte_totale') || 
-      this.isModified('frais_organisation') || 
-      this.isModified('gain_vainqueur')) {
+      this.isModified('frais_unitaire')) {
     
-    const totalCalcule = this.frais_organisation + this.gain_vainqueur;
-    
-    if (Math.abs(totalCalcule - this.cagnotte_totale) > 1) {
-      return next(new Error('Incohérence financière: frais + gain doit égaler la cagnotte totale'));
+    // Vérification de la cohérence : Cagnotte Totale = Frais Unitaire * Nombre de Participants (fixé à 4)
+    if (this.cagnotte_totale !== this.frais_unitaire * 4) {
+      // Pour une logique de cagnotte, on peut aussi vérifier que l'allocation ne dépasse pas la cagnotte.
+      // Par souci de simplicité et de cohérence avec la variable "cagnotte_totale",
+      // on vérifie que la cagnotte est bien le total des entrées.
+      next(new Error(`Validation des finances échouée: La cagnotte totale (${this.cagnotte_totale}) doit être le produit des frais unitaires (${this.frais_unitaire} * 4).`));
     }
   }
+  
+  // Validation pour s'assurer que l'allocation ne dépasse pas la cagnotte (Bonne pratique)
+  const totalAllocation = this.frais_organisation + this.gain_vainqueur; 
+  // ATTENTION: Si vous avez d'autres gains (ex: 2e place), il faut les ajouter ici.
+  // La formule actuelle est trop simpliste pour l'intégrer comme une règle stricte sans confirmation de votre logique.
+  // Je laisse la validation de la CAGNOTTE_TOTALE = FRAIS_UNITAIRE * 4 car c'est la seule qui semble logique.
+  
   next();
 });
 
