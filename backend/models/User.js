@@ -20,6 +20,14 @@ const userSchema = new mongoose.Schema({
         lowercase: true,
         validate: [validator.isEmail, 'Veuillez fournir un email valide']
     },
+    tiktokLink: {
+        type: String,
+        trim: true
+    },
+    tiktokProfileName: {
+        type: String,
+        trim: true
+    },
     password: {
         type: String,
         required: [true, 'Le mot de passe est obligatoire'],
@@ -28,7 +36,7 @@ const userSchema = new mongoose.Schema({
     },
     role: {
         type: String,
-        enum: ['admin', 'jury', 'moderateur'],
+        enum: ['admin', 'jury', 'moderateur', 'jury_externe', 'juge_administratif'],
         default: 'moderateur'
     },
     isActive: {

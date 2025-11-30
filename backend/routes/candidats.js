@@ -3,115 +3,123 @@ const router = express.Router();
 const Candidat = require('../models/Candidat');
 const Transaction = require('../models/Transaction');
 const { soumettreCandidature } = require('../utils/calculsFinanciers');
-const { upload, handleUploadErrors } = require('../middleware/upload');
+const { parseAirtelMessage } = require('../utils/paymentParser');
 const { protect, admin } = require('../middleware/auth');
-const { cleanupUploadedFiles } = require('../utils/fileHelper');
 const logger = require('../config/logger');
-const fs = require('fs');
 
 // @desc    Soumettre une candidature
 // @route   POST /api/candidats/inscription
 // @access  Public
-router.post('/inscription',
-  upload.fields([
-    { name: 'carteEtudiant', maxCount: 1 },
-    { name: 'notes', maxCount: 1 }
-  ]),
-  handleUploadErrors,
-  async (req, res) => {
-    try {
-      const {
-        nom,
-        prenom,
-        dateNaissance,
-        email,
-        telephone,
-        nationalite,
-        nomEtablissement
-      } = req.body;
+router.post('/inscription', async (req, res) => {
+  try {
+    const {
+      nom,
+      prenom,
+      dateNaissance,
+      email,
+      telephone,
+      nationalite,
+      nomEtablissement,
+      tiktokLink,
+      tiktokProfileName,
+      typeCandidat,
+      paymentMessage
+    } = req.body;
 
-      // Vérifier si l'email ou téléphone existe déjà
-      const existeDeja = await Candidat.findOne({
-        $or: [{ email }, { telephone }]
+    // Vérifier si l'email ou téléphone existe déjà
+    const existeDeja = await Candidat.findOne({
+      $or: [{ email }, { telephone }]
+    });
+
+    if (existeDeja) {
+      return res.status(400).json({
+        error: 'Un candidat avec cet email ou téléphone existe déjà'
       });
+    }
 
-      if (existeDeja) {
-        // Supprimer les fichiers uploadés avant de retourner l'erreur
-        cleanupUploadedFiles(req.files);
+    // 1. Déterminer la catégorie et les frais
+    const resultatsCalculs = soumettreCandidature({
+      dateNaissance,
+      nationalite,
+      nomEtablissement,
+      typeCandidat
+    });
 
-        return res.status(400).json({
-          error: 'Un candidat avec cet email ou téléphone existe déjà'
-        });
-      }
+    // 2. Vérifier le paiement si un message est fourni
+    let fraisPayes = false;
+    let soldeInitial = 0;
+    let transactionId = null;
 
-      // Vérifier les fichiers uploadés (carte étudiant obligatoire, notes optionnelles)
-      if (!req.files || !req.files.carteEtudiant) {
-        return res.status(400).json({
-          error: 'Le document (carte étudiante) est obligatoire'
-        });
-      }
-
-      // 1. Déterminer la catégorie et les frais
-      const resultatsCalculs = soumettreCandidature({
-        dateNaissance,
-        nationalite,
-        nomEtablissement,
-        fichiers: {
-          carteEtudiant: req.files.carteEtudiant[0].path,
-          notes: req.files.notes ? req.files.notes[0].path : null,
+    if (paymentMessage) {
+      const paymentResult = parseAirtelMessage(paymentMessage);
+      if (paymentResult.success) {
+        // Vérifier si le montant correspond aux frais (ou plus)
+        if (paymentResult.amount >= resultatsCalculs.fraisInscription) {
+          fraisPayes = true;
+          soldeInitial = paymentResult.amount; // On crédite tout le montant envoyé
+          transactionId = paymentResult.transactionId;
         }
-      });
+      }
+    }
 
-      // 2. Créer le candidat
-      const nouveauCandidat = new Candidat({
-        nom,
-        prenom,
-        dateNaissance,
-        email,
-        telephone,
-        nationalite,
-        nomEtablissement,
-        urlCarteEtudiant: req.files.carteEtudiant[0].path,
-        urlNotes: req.files.notes ? req.files.notes[0].path : null,
-        categorie: resultatsCalculs.categorie,
-        statutAdministratif: resultatsCalculs.statutAdministratif,
-      });
+    // 3. Créer le candidat
+    const nouveauCandidat = new Candidat({
+      nom,
+      prenom,
+      dateNaissance,
+      email,
+      telephone,
+      nationalite,
+      nomEtablissement,
+      tiktokLink,
+      tiktokProfileName,
+      categorie: resultatsCalculs.categorie,
+      statutAdministratif: fraisPayes ? 'ADMISSIBLE' : resultatsCalculs.statutAdministratif,
+      fraisInscriptionPayes: fraisPayes,
+      soldeActuel: soldeInitial
+    });
 
-      await nouveauCandidat.save();
+    await nouveauCandidat.save();
 
-      // 3. CRÉER LA TRANSACTION EN ATTENTE 
+    // 4. CRÉER LA TRANSACTION
+    if (transactionId || !fraisPayes) {
       const nouvelleTransaction = new Transaction({
         candidat_id: nouveauCandidat._id,
         type: 'FRAIS_INSCRIPTION',
         montant: resultatsCalculs.fraisInscription,
-        statut: 'EN_ATTENTE',
+        statut: fraisPayes ? 'VALIDE' : 'EN_ATTENTE',
         description: `Frais d'inscription pour la catégorie ${resultatsCalculs.categorie}`,
+        reference: transactionId || undefined
       });
-
       await nouvelleTransaction.save();
-
-      logger.info('Nouvelle candidature soumise', { candidatId: nouveauCandidat._id, categorie: resultatsCalculs.categorie });
-
-      res.status(201).json({
-        success: true,
-        message: 'Candidature soumise avec succès. Paiement des frais en attente.',
-        candidat: nouveauCandidat,
-        fraisRequis: resultatsCalculs.fraisInscription,
-        instructionPaiement: resultatsCalculs.message,
-        referenceTransaction: nouvelleTransaction.reference
-      });
-
-    } catch (error) {
-      logger.error('Erreur inscription:', { error: error.message, stack: error.stack });
-
-      cleanupUploadedFiles(req.files);
-
-      res.status(400).json({
-        success: false,
-        error: error.message || 'Erreur lors de la soumission de la candidature'
-      });
     }
-  });
+
+    logger.info('Nouvelle candidature soumise', {
+      candidatId: nouveauCandidat._id,
+      categorie: resultatsCalculs.categorie,
+      fraisPayes
+    });
+
+    res.status(201).json({
+      success: true,
+      message: fraisPayes
+        ? 'Inscription réussie et paiement validé ! Bienvenue.'
+        : 'Inscription enregistrée. Paiement des frais en attente.',
+      candidat: nouveauCandidat,
+      fraisRequis: resultatsCalculs.fraisInscription,
+      instructionPaiement: resultatsCalculs.message,
+      fraisPayes
+    });
+
+  } catch (error) {
+    logger.error('Erreur inscription:', { error: error.message, stack: error.stack });
+
+    res.status(400).json({
+      success: false,
+      error: error.message || 'Erreur lors de la soumission de la candidature'
+    });
+  }
+});
 
 // @desc    Obtenir le classement par catégorie
 // @route   GET /api/candidats/classement/:categorie
@@ -122,11 +130,11 @@ router.get('/classement/:categorie', async (req, res) => {
     const { limit = 50, page = 1 } = req.query;
 
     // Valider la catégorie
-    const categoriesValides = ['Primaire', 'College/Lycee', 'Universitaire'];
+    const categoriesValides = ['Primaire', 'College/Lycee', 'Universitaire', 'Entrepreneur'];
     if (!categoriesValides.includes(categorie)) {
       return res.status(400).json({
         success: false,
-        error: 'Catégorie invalide. Valeurs acceptées: Primaire, College/Lycee, Universitaire'
+        error: 'Catégorie invalide. Valeurs acceptées: Primaire, College/Lycee, Universitaire, Entrepreneur'
       });
     }
 

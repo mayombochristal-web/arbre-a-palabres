@@ -13,7 +13,8 @@ const CATEGORIES_AGE = {
 const FRAIS_INSCRIPTION = {
   'Primaire': 500,
   'College/Lycee': 1000,
-  'Universitaire': 2000
+  'Universitaire': 2000,
+  'Entrepreneur': 5000
 };
 
 /**
@@ -35,8 +36,17 @@ function calculerAge(dateNaissance) {
 /**
  * Détermine la catégorie et les frais d'inscription basés sur l'âge
  */
-function determinerCategorieEtFrais(dateNaissance) {
+function determinerCategorieEtFrais(dateNaissance, typeCandidat = null) {
   const age = calculerAge(dateNaissance);
+
+  // Si le type est explicitement Entrepreneur, on ignore l'âge pour la catégorie
+  if (typeCandidat === 'Entrepreneur') {
+    return {
+      categorie: 'Entrepreneur',
+      fraisInscription: FRAIS_INSCRIPTION['Entrepreneur'],
+      age
+    };
+  }
 
   if (age < 10) {
     throw new Error('Âge minimum requis non atteint');
@@ -65,12 +75,18 @@ function calculerRepartitionSimple(cagnotteTotale) {
   const fraisOrganisation = Math.round(cagnotteTotale * 0.25); // 25%
   const gainVainqueur = Math.round(cagnotteTotale * 0.75); // 75%
 
+  // Part du Juge Administratif (10% des frais d'organisation)
+  const partJugeAdmin = Math.round(fraisOrganisation * 0.10);
+  const resteOrganisation = fraisOrganisation - partJugeAdmin;
+
   if (fraisOrganisation + gainVainqueur !== cagnotteTotale) {
     const difference = cagnotteTotale - (fraisOrganisation + gainVainqueur);
     const gainAjuste = gainVainqueur + difference;
 
     return {
       fraisOrganisation,
+      partJugeAdmin,
+      resteOrganisation,
       gainVainqueur: gainAjuste,
       cagnotteTotale,
       tauxFrais: 0.25,
@@ -80,6 +96,8 @@ function calculerRepartitionSimple(cagnotteTotale) {
 
   return {
     fraisOrganisation,
+    partJugeAdmin,
+    resteOrganisation,
     gainVainqueur,
     cagnotteTotale,
     tauxFrais: 0.25,
@@ -122,7 +140,7 @@ function organiserNouveauDebatSimple(participants, theme) {
  * Soumission de candidature avec vérification des documents
  */
 function soumettreCandidature(donneesCandidat) {
-  const { dateNaissance, nationalite, nomEtablissement, fichiers } = donneesCandidat;
+  const { dateNaissance, nationalite, nomEtablissement, typeCandidat } = donneesCandidat;
 
   if (nationalite !== "Gabonaise") {
     throw new Error('La nationalité gabonaise est requise');
@@ -132,12 +150,9 @@ function soumettreCandidature(donneesCandidat) {
     throw new Error("Le nom de l'établissement est requis");
   }
 
-  // Vérification uniquement de la carte étudiant (notes optionnelles)
-  if (!fichiers?.carteEtudiant) {
-    throw new Error('Le document (carte étudiante) est requis');
-  }
+  // Suppression de la vérification des fichiers
 
-  const { categorie, fraisInscription, age } = determinerCategorieEtFrais(dateNaissance);
+  const { categorie, fraisInscription, age } = determinerCategorieEtFrais(dateNaissance, typeCandidat);
 
   return {
     categorie,

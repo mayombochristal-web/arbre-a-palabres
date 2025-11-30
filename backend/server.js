@@ -20,7 +20,9 @@ const connectDB = require("./config/database");
 const candidatsRoutes = require("./routes/candidats");
 const debatsRoutes = require("./routes/debats");
 const transactionsRoutes = require("./routes/transactions");
+const transactionsRoutes = require("./routes/transactions");
 const tropheesRoutes = require("./routes/trophees");
+const authRoutes = require("./routes/auth");
 
 // ===============================================
 // 3. CONFIGURATION
@@ -109,6 +111,7 @@ app.use("/api/candidats", candidatsRoutes);
 app.use("/api/debats", debatsRoutes);
 app.use("/api/transactions", transactionsRoutes);
 app.use("/api/trophees", tropheesRoutes);
+app.use("/api/auth", authRoutes);
 
 // ===============================================
 // 7. ERREURS
