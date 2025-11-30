@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<coverage generated="1764499976252" clover="3.2.0">
+  <project timestamp="1764499976252" name="All files">
+    <metrics statements="62" coveredstatements="24" conditionals="38" coveredconditionals="15" methods="13" coveredmethods="3" elements="113" coveredelements="42" complexity="0" loc="62" ncloc="62" packages="1" files="1" classes="1"/>
+    <file name="calculsFinanciers.js" path="C:\Users\MAYOMBO\Desktop\arbre-a-palabres - Copie\backend\utils\calculsFinanciers.js">
+      <metrics statements="62" coveredstatements="24" conditionals="38" coveredconditionals="15" methods="13" coveredmethods="3"/>
+      <line num="7" count="1" type="stmt"/>
+      <line num="13" count="1" type="stmt"/>
+      <line num="23" count="5" type="stmt"/>
+      <line num="24" count="5" type="stmt"/>
+      <line num="25" count="5" type="stmt"/>
+      <line num="26" count="5" type="stmt"/>
+      <line num="28" count="5" type="cond" truecount="3" falsecount="2"/>
+      <line num="29" count="0" type="stmt"/>
+      <line num="32" count="5" type="stmt"/>
+      <line num="39" count="5" type="stmt"/>
+      <line num="41" count="5" type="cond" truecount="2" falsecount="0"/>
+      <line num="42" count="1" type="stmt"/>
+      <line num="44" count="4" type="cond" truecount="2" falsecount="0"/>
+      <line num="45" count="1" type="stmt"/>
+      <line num="48" count="3" type="stmt"/>
+      <line num="49" count="6" type="cond" truecount="4" falsecount="0"/>
+      <line num="50" count="3" type="stmt"/>
+      <line num="58" count="0" type="stmt"/>
+      <line num="65" count="0" type="stmt"/>
+      <line num="66" count="0" type="stmt"/>
+      <line num="68" count="0" type="cond" truecount="0" falsecount="2"/>
+      <line num="69" count="0" type="stmt"/>
+      <line num="70" count="0" type="stmt"/>
+      <line num="72" count="0" type="stmt"/>
+      <line num="81" count="0" type="stmt"/>
+      <line num="94" count="0" type="cond" truecount="0" falsecount="4"/>
+      <line num="95" count="0" type="stmt"/>
+      <line num="98" count="0" type="stmt"/>
+      <line num="99" count="0" type="cond" truecount="0" falsecount="2"/>
+      <line num="100" count="0" type="stmt"/>
+      <line num="103" count="0" type="stmt"/>
+      <line num="104" count="0" type="stmt"/>
+      <line num="105" count="0" type="stmt"/>
+      <line num="107" count="0" type="stmt"/>
+      <line num="109" count="0" type="stmt"/>
+      <line num="125" count="6" type="stmt"/>
+      <line num="127" count="6" type="cond" truecount="2" falsecount="0"/>
+      <line num="128" count="1" type="stmt"/>
+      <line num="131" count="5" type="cond" truecount="1" falsecount="1"/>
+      <line num="132" count="0" type="stmt"/>
+      <line num="136" count="5" type="cond" truecount="1" falsecount="1"/>
+      <line num="137" count="0" type="stmt"/>
+      <line num="140" count="5" type="stmt"/>
+      <line num="142" count="3" type="stmt"/>
+      <line num="155" count="0" type="stmt"/>
+      <line num="156" count="0" type="stmt"/>
+      <line num="163" count="0" type="cond" truecount="0" falsecount="4"/>
+      <line num="164" count="0" type="stmt"/>
+      <line num="167" count="0" type="cond" truecount="0" falsecount="2"/>
+      <line num="168" count="0" type="stmt"/>
+      <line num="171" count="0" type="stmt"/>
+      <line num="172" count="0" type="cond" truecount="0" falsecount="2"/>
+      <line num="173" count="0" type="stmt"/>
+      <line num="174" count="0" type="stmt"/>
+      <line num="177" count="0" type="stmt"/>
+      <line num="178" count="0" type="cond" truecount="0" falsecount="2"/>
+      <line num="179" count="0" type="stmt"/>
+      <line num="182" count="0" type="stmt"/>
+      <line num="183" count="0" type="stmt"/>
+      <line num="185" count="0" type="stmt"/>
+      <line num="187" count="0" type="stmt"/>
+      <line num="199" count="1" type="stmt"/>
+    </file>
+  </project>
+</coverage>

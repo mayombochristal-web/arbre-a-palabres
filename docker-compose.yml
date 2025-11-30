@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  # Service Backend
+  backend:
+    build: ./backend
+    container_name: arbre-palabres-backend
+    ports:
+      - "5001:5001"
+    environment:
+      - NODE_ENV=production
+      - PORT=5001
+      - MONGODB_URI=mongodb://mongo:27017/arbre-palabres
+      - JWT_SECRET=${JWT_SECRET} # Doit être défini dans le .env à la racine ou exporté
+    depends_on:
+      - mongo
+    networks:
+      - app-network
+    restart: always
+
+  # Service Frontend
+  frontend:
+    build: ./frontend
+    container_name: arbre-palabres-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - app-network
+    restart: always
+
+  # Base de données MongoDB
+  mongo:
+    image: mongo:6.0
+    container_name: arbre-palabres-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - app-network
+    restart: always
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  mongo-data:

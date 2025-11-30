@@ -5,6 +5,8 @@ const Transaction = require('../models/Transaction');
 const { soumettreCandidature } = require('../utils/calculsFinanciers');
 const { upload, handleUploadErrors } = require('../middleware/upload');
 const { protect, admin } = require('../middleware/auth');
+const { cleanupUploadedFiles } = require('../utils/fileHelper');
+const logger = require('../config/logger');
 const fs = require('fs');
 
 // @desc    Soumettre une candidature
@@ -35,8 +37,7 @@ router.post('/inscription',
 
       if (existeDeja) {
         // Supprimer les fichiers uploadés avant de retourner l'erreur
-        if (req.files?.carteEtudiant) fs.unlinkSync(req.files.carteEtudiant[0].path);
-        if (req.files?.notes) fs.unlinkSync(req.files.notes[0].path);
+        cleanupUploadedFiles(req.files);
 
         return res.status(400).json({
           error: 'Un candidat avec cet email ou téléphone existe déjà'
@@ -89,6 +90,8 @@ router.post('/inscription',
 
       await nouvelleTransaction.save();
 
+      logger.info('Nouvelle candidature soumise', { candidatId: nouveauCandidat._id, categorie: resultatsCalculs.categorie });
+
       res.status(201).json({
         success: true,
         message: 'Candidature soumise avec succès. Paiement des frais en attente.',
@@ -99,10 +102,9 @@ router.post('/inscription',
       });
 
     } catch (error) {
-      console.error('Erreur inscription:', error);
+      logger.error('Erreur inscription:', { error: error.message, stack: error.stack });
 
-      if (req.files?.carteEtudiant) fs.unlinkSync(req.files.carteEtudiant[0].path);
-      if (req.files?.notes) fs.unlinkSync(req.files.notes[0].path);
+      cleanupUploadedFiles(req.files);
 
       res.status(400).json({
         success: false,
@@ -110,6 +112,65 @@ router.post('/inscription',
       });
     }
   });
+
+// @desc    Obtenir le classement par catégorie
+// @route   GET /api/candidats/classement/:categorie
+// @access  Public
+router.get('/classement/:categorie', async (req, res) => {
+  try {
+    const { categorie } = req.params;
+    const { limit = 50, page = 1 } = req.query;
+
+    // Valider la catégorie
+    const categoriesValides = ['Primaire', 'College/Lycee', 'Universitaire'];
+    if (!categoriesValides.includes(categorie)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Catégorie invalide. Valeurs acceptées: Primaire, College/Lycee, Universitaire'
+      });
+    }
+
+    const query = {
+      categorie,
+      statutAdministratif: 'ADMISSIBLE'
+    };
+
+    const total = await Candidat.countDocuments(query);
+    const candidats = await Candidat.find(query)
+      .select('nom prenom scoreFinal nombreVictoires nombreDefaites soldeActuel tropheeActuel')
+      .populate('tropheeActuel', 'nom imageUrl')
+      .sort({ scoreFinal: -1, nombreVictoires: -1, soldeActuel: -1 })
+      .limit(parseInt(limit))
+      .skip((parseInt(page) - 1) * parseInt(limit));
+
+    // Ajouter le rang à chaque candidat
+    const classement = candidats.map((candidat, index) => ({
+      rang: (parseInt(page) - 1) * parseInt(limit) + index + 1,
+      ...candidat.toObject(),
+      nombreDebatsTotal: candidat.nombreVictoires + candidat.nombreDefaites,
+      tauxVictoire: candidat.nombreVictoires + candidat.nombreDefaites > 0
+        ? ((candidat.nombreVictoires / (candidat.nombreVictoires + candidat.nombreDefaites)) * 100).toFixed(2)
+        : 0
+    }));
+
+    res.status(200).json({
+      success: true,
+      categorie,
+      total,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      totalPages: Math.ceil(total / parseInt(limit)),
+      classement
+    });
+
+  } catch (error) {
+    logger.error('Erreur récupération classement:', { error: error.message, categorie: req.params.categorie });
+    res.status(500).json({
+      success: false,
+      error: 'Erreur serveur lors de la récupération du classement'
+    });
+  }
+});
 
 // @desc    Obtenir tous les candidats (filtrage/pagination)
 // @route   GET /api/candidats
@@ -159,10 +220,39 @@ router.get('/', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Erreur récupération candidats:', error);
+    logger.error('Erreur récupération candidats:', { error: error.message });
     res.status(500).json({
       success: false,
       error: 'Erreur serveur lors de la récupération des candidats'
+    });
+  }
+});
+
+// @desc    Obtenir un candidat par ID
+// @route   GET /api/candidats/:id
+// @access  Public
+router.get('/:id', async (req, res) => {
+  try {
+    const candidat = await Candidat.findById(req.params.id)
+      .populate('tropheeActuel', 'nom description imageUrl');
+
+    if (!candidat) {
+      return res.status(404).json({
+        success: false,
+        error: 'Candidat non trouvé'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      candidat
+    });
+
+  } catch (error) {
+    logger.error('Erreur récupération candidat:', { error: error.message, id: req.params.id });
+    res.status(500).json({
+      success: false,
+      error: 'Erreur serveur lors de la récupération du candidat'
     });
   }
 });

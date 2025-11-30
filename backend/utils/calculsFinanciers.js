@@ -38,8 +38,11 @@ function calculerAge(dateNaissance) {
 function determinerCategorieEtFrais(dateNaissance) {
   const age = calculerAge(dateNaissance);
 
-  if (age < 10 || age > 40) {
-    throw new Error(`Âge ${age} ans hors limites (10-40 ans).`);
+  if (age < 10) {
+    throw new Error('Âge minimum requis non atteint');
+  }
+  if (age > 40) {
+    throw new Error('Âge maximum dépassé');
   }
 
   for (const [categorie, limites] of Object.entries(CATEGORIES_AGE)) {

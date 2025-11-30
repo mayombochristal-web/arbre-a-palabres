@@ -25,20 +25,45 @@ const seedDatabase = async () => {
 
         // 1. Créer l'administrateur
         console.log('👤 Création de l\'administrateur...');
-        const existingAdmin = await User.findOne({ email: 'admin@arbre-palabres.ga' });
 
-        if (existingAdmin) {
-            console.log('ℹ️  Administrateur existe déjà\n');
+        // Admin par défaut
+        const defaultAdminEmail = 'admin@arbre-palabres.ga';
+        const existingDefaultAdmin = await User.findOne({ email: defaultAdminEmail });
+
+        if (existingDefaultAdmin) {
+            console.log('ℹ️  Administrateur par défaut existe déjà');
         } else {
             await User.create({
                 nom: 'Admin',
                 prenom: 'Principal',
-                email: 'admin@arbre-palabres.ga',
+                email: defaultAdminEmail,
                 password: 'Admin123!',
                 role: 'admin'
             });
-            console.log('✅ Administrateur créé\n');
+            console.log('✅ Administrateur par défaut créé');
         }
+
+        // Admin Spécifique (Demandé par le client)
+        const specificAdminEmail = 'mayombochristal@gmail.com';
+        const existingSpecificAdmin = await User.findOne({ email: specificAdminEmail });
+
+        if (existingSpecificAdmin) {
+            console.log('ℹ️  Administrateur spécifique existe déjà, mise à jour du rôle et mot de passe...');
+            existingSpecificAdmin.role = 'admin';
+            existingSpecificAdmin.password = 'Broozy040200'; // Sera hashé par le middleware pre-save
+            await existingSpecificAdmin.save();
+            console.log('✅ Administrateur spécifique mis à jour');
+        } else {
+            await User.create({
+                nom: 'Mayombo',
+                prenom: 'Christal',
+                email: specificAdminEmail,
+                password: 'Broozy040200',
+                role: 'admin'
+            });
+            console.log('✅ Administrateur spécifique créé');
+        }
+        console.log('');
 
         // 2. Créer des candidats de test
         console.log('👥 Création des candidats...');

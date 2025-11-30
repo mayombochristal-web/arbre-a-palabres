@@ -216,19 +216,14 @@ const DebatList = () => {
                     </span>
                   </div>
                 </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>Gain vainqueur</div>
-                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#2d5016' }}>
-                    {calculService.formaterMontant(debat.gain_vainqueur || 0)}
-                  </div>
-                </div>
               </div>
 
+              {/* Section Financière Simplifiée pour Candidats */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px', padding: '15px 0', borderTop: '1px solid #eee', borderBottom: '1px solid #eee' }}>
                 <div>
-                  <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>Cagnotte Totale</div>
-                  <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#333' }}>
-                    {calculService.formaterMontant(debat.cagnotte_totale || 0)}
+                  <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>Cagnotte à gagner 💰</div>
+                  <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#2d5016' }}>
+                    {calculService.formaterMontant(debat.gain_vainqueur || 0)}
                   </div>
                 </div>
                 <div>

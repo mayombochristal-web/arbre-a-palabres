@@ -7,10 +7,10 @@
  */
 export function formaterTelephone(telephone) {
   if (!telephone) return '';
-  
+
   // Supprimer tous les caractères non numériques
   const numeros = telephone.replace(/\D/g, '');
-  
+
   // Formater selon le format gabonais (simplifié)
   if (numeros.startsWith('241')) {
     return `+241 ${numeros.slice(3, 5)} ${numeros.slice(5, 8)} ${numeros.slice(8)}`;
@@ -39,7 +39,7 @@ export function formaterDuree(milliseconds) {
   const minutes = Math.floor(seconds / 60);
   const hours = Math.floor(minutes / 60);
   const days = Math.floor(hours / 24);
-  
+
   if (days > 0) return `${days}j ${hours % 24}h`;
   if (hours > 0) return `${hours % 24}h ${minutes % 60}m`;
   if (minutes > 0) return `${minutes % 60}m ${seconds % 60}s`;
@@ -97,7 +97,7 @@ export function formaterStatut(statut) {
     'termine': 'Terminé',
     'annule': 'Annulé'
   };
-  
+
   return statuts[statut.toUpperCase()] || statut;
 }
 
@@ -111,7 +111,7 @@ export function formaterStatutTransaction(statut) {
     'REJETEE': 'Rejetée',
     'COMPLETEE': 'Complétée'
   };
-  
+
   return statuts[statut] || statut;
 }
 
@@ -126,7 +126,7 @@ export function formaterTypeTransaction(type) {
     'REMBOURSEMENT': 'Remboursement',
     'PENALITE': 'Pénalité'
   };
-  
+
   return types[type] || type;
 }
 
@@ -135,7 +135,7 @@ export function formaterTypeTransaction(type) {
  */
 export function genererInitiales(nomComplet) {
   if (!nomComplet) return '';
-  
+
   return nomComplet
     .split(' ')
     .map(part => part.charAt(0).toUpperCase())
@@ -149,7 +149,7 @@ export function genererInitiales(nomComplet) {
 export function tronquerTexte(texte, longueurMax = 50) {
   if (!texte) return '';
   if (texte.length <= longueurMax) return texte;
-  
+
   return texte.substring(0, longueurMax) + '...';
 }
 
@@ -169,6 +169,23 @@ export function validerTelephone(telephone) {
   const numeros = telephone.replace(/\D/g, '');
   // Vérification simple: 8 à 11 chiffres
   return numeros.length >= 8 && numeros.length <= 11;
+}
+
+/**
+ * Formate la catégorie pour l'affichage
+ * Convertit "College/Lycee" en "Collège/Lycée" avec accents
+ */
+export function formatCategorie(categorie) {
+  if (!categorie) return 'Inconnu';
+
+  const mapping = {
+    'Primaire': 'Primaire',
+    'College/Lycee': 'Collège/Lycée',
+    'Universitaire': 'Universitaire',
+    'Inconnu': 'Inconnu'
+  };
+
+  return mapping[categorie] || categorie;
 }
 
 /**

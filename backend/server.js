@@ -120,24 +120,23 @@ app.use((req, res) => {
   });
 });
 
-app.use((error, req, res, next) => {
-  console.error("Erreur backend:", error.message);
-
-  res.status(error.status || 500).json({
-    success: false,
-    error: error.message || "Erreur serveur",
-  });
-});
+// ===============================================
+// 7. MIDDLEWARE DE GESTION D'ERREURS (DOIT ÊTRE LE DERNIER)
+// ===============================================
+const errorHandler = require('./middleware/errorHandler');
+app.use(errorHandler);
 
 // ===============================================
 // 8. LANCEMENT
 // ===============================================
+const logger = require('./config/logger');
+
 const server = app.listen(PORT, () =>
-  console.log(`🚀 Backend opérationnel sur le port ${PORT}`)
+  logger.info(`🚀 Backend opérationnel sur le port ${PORT}`)
 );
 
 process.on("unhandledRejection", (err) => {
-  console.error("Unhandled Promise Rejection:", err);
+  logger.error("Unhandled Promise Rejection:", { error: err.message, stack: err.stack });
   server.close(() => process.exit(1));
 });
 
