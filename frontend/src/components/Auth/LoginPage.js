@@ -118,12 +118,6 @@ const LoginPage = () => {
                         {loading ? 'Connexion...' : 'Se connecter'}
                     </button>
                 </form>
-
-                <div style={{ marginTop: '20px', textAlign: 'center', fontSize: '14px', color: '#666' }}>
-                    <p>Identifiants de test :</p>
-                    <p><strong>Email:</strong> admin@arbre-palabres.ga</p>
-                    <p><strong>Mot de passe:</strong> Admin123!</p>
-                </div>
             </div>
         </div>
     );

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 // Données de démonstration - mêmes que DebatList
@@ -91,6 +91,19 @@ const GestionDebatsPage = () => {
     const navigate = useNavigate();
     const [debats, setDebats] = useState(MOCK_DEBATS);
     const [selectedDebat, setSelectedDebat] = useState(null);
+    const [lastUpdate, setLastUpdate] = useState(new Date());
+
+    // Auto-refresh toutes les 10 secondes
+    useEffect(() => {
+        const interval = setInterval(() => {
+            // Ici, vous pouvez ajouter un appel API pour recharger les débats
+            // Pour l'instant, on met juste à jour le timestamp
+            setLastUpdate(new Date());
+        }, 10000);
+
+        return () => clearInterval(interval);
+    }, []);
+
 
     const getStatutBadge = (statut) => {
         const styles = {

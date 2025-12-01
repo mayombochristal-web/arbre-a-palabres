@@ -17,7 +17,7 @@ describe('Candidats API', () => {
 
         it('devrait retourner le classement pour College/Lycee', async () => {
             const res = await request(app)
-                .get('/api/candidats/classement/College/Lycee')
+                .get('/api/candidats/classement/College%2FLycee')
                 .expect(200);
 
             expect(res.body.success).toBe(true);

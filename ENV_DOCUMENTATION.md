@@ -7,6 +7,7 @@
 ### Configuration Serveur
 - `NODE_ENV`: Environnement d'exécution (development, production)
 - `PORT`: Port du serveur backend (défaut: 5001)
+- `DEFAULT_CHARSET`: Encodage par défaut des réponses JSON (défaut: utf-8)
 
 ### Base de Données
 - `MONGODB_URI`: URI de connexion MongoDB

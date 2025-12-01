@@ -20,7 +20,7 @@ const connectDB = require("./config/database");
 const candidatsRoutes = require("./routes/candidats");
 const debatsRoutes = require("./routes/debats");
 const transactionsRoutes = require("./routes/transactions");
-const transactionsRoutes = require("./routes/transactions");
+
 const tropheesRoutes = require("./routes/trophees");
 const authRoutes = require("./routes/auth");
 
@@ -46,7 +46,14 @@ const app = express();
 // ===============================================
 
 // Body parser
-app.use(express.json());
+app.use(express.json({ charset: 'utf-8' }));
+app.use(express.urlencoded({ extended: true, charset: 'utf-8' }));
+
+// Middleware pour forcer l'encodage UTF-8 dans les réponses
+app.use((req, res, next) => {
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  next();
+});
 
 // Sécurité
 app.use(helmet());
@@ -74,8 +81,8 @@ app.options("*", cors());
 app.use(
   "/api/",
   rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 100,
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 500, // Augmenté de 100 à 500 pour permettre l'auto-refresh
     message: "Trop de requêtes, réessayez plus tard.",
   })
 );
@@ -133,14 +140,23 @@ app.use(errorHandler);
 // 8. LANCEMENT
 // ===============================================
 const logger = require('./config/logger');
+const { initializeSocket } = require('./config/socket');
 
-const server = app.listen(PORT, () =>
-  logger.info(`🚀 Backend opérationnel sur le port ${PORT}`)
-);
+// Only start server if run directly
+if (require.main === module) {
+  const server = app.listen(PORT, () =>
+    logger.info(`🚀 Backend opérationnel sur le port ${PORT}`)
+  );
 
-process.on("unhandledRejection", (err) => {
-  logger.error("Unhandled Promise Rejection:", { error: err.message, stack: err.stack });
-  server.close(() => process.exit(1));
-});
+  // Initialiser Socket.io
+  const io = initializeSocket(server);
+  logger.info('✅ Socket.io initialisé');
+
+  process.on("unhandledRejection", (err) => {
+    logger.error("Unhandled Promise Rejection:", { error: err.message, stack: err.stack });
+    server.close(() => process.exit(1));
+  });
+}
 
 module.exports = app;
+

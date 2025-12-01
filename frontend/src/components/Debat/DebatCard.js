@@ -28,7 +28,7 @@ const DebatCard = ({ debat, onViewDetails, onParticipate }) => {
             )}
           </div>
         </div>
-        
+
         <div className="debat-gain">
           <div className="gain-label">Gain du vainqueur</div>
           <div className="gain-montant">
@@ -40,24 +40,67 @@ const DebatCard = ({ debat, onViewDetails, onParticipate }) => {
       <div className="debat-body">
         <div className="debat-stats">
           <div className="stat">
-            <div className="stat-label">Cagnotte totale</div>
+            <div className="stat-label">💰 Cagnotte totale</div>
             <div className="stat-value">
               {calculService.formaterMontant(debat.cagnotte_totale)}
             </div>
           </div>
-          
+
           <div className="stat">
-            <div className="stat-label">Participants</div>
+            <div className="stat-label">👥 Participants</div>
             <div className="stat-value">
               {debat.participants_ids?.length || 0}/4
             </div>
           </div>
-          
+
           <div className="stat">
-            <div className="stat-label">Date</div>
+            <div className="stat-label">📅 Date</div>
             <div className="stat-value">
               {formaterDateHeure(debat.date_debut)}
             </div>
+          </div>
+        </div>
+
+        {/* Liste des participants */}
+        {debat.participants_ids && debat.participants_ids.length > 0 && (
+          <div className="participants-list">
+            <div className="participants-header">
+              <strong>Participants inscrits:</strong>
+            </div>
+            <div className="participants-grid">
+              {debat.participants_ids.map((participant, index) => (
+                <div key={participant._id || index} className="participant-item">
+                  <span className="participant-number">{index + 1}</span>
+                  <span className="participant-name">
+                    {participant.prenom} {participant.nom}
+                  </span>
+                  {participant.scoreFinal !== undefined && (
+                    <span className="participant-score">
+                      {participant.scoreFinal} pts
+                    </span>
+                  )}
+                </div>
+              ))}
+              {/* Afficher les places vides */}
+              {[...Array(4 - debat.participants_ids.length)].map((_, index) => (
+                <div key={`empty-${index}`} className="participant-item empty">
+                  <span className="participant-number">{debat.participants_ids.length + index + 1}</span>
+                  <span className="participant-name">Place disponible</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Répartition financière */}
+        <div className="financial-breakdown">
+          <div className="financial-item">
+            <span>Frais d'organisation (25%)</span>
+            <strong>{calculService.formaterMontant(debat.frais_organisation)}</strong>
+          </div>
+          <div className="financial-item">
+            <span>Frais unitaire par participant</span>
+            <strong>{calculService.formaterMontant(debat.frais_unitaire)}</strong>
           </div>
         </div>
 
@@ -79,19 +122,20 @@ const DebatCard = ({ debat, onViewDetails, onParticipate }) => {
       </div>
 
       <div className="debat-actions">
-        <button 
+        <button
           className="btn-secondary"
           onClick={() => onViewDetails(debat)}
         >
           Voir détails
         </button>
-        
+
         {debat.statut === 'en_attente' && onParticipate && (
-          <button 
+          <button
             className="btn-primary"
             onClick={() => onParticipate(debat)}
+            disabled={debat.participants_ids?.length >= 4}
           >
-            Participer
+            {debat.participants_ids?.length >= 4 ? 'Complet' : 'Participer'}
           </button>
         )}
       </div>
