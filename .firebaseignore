@@ -1,0 +1,12 @@
+# Ignore Firebase cache
+.firebase/
+
+# Ignore Firebase config
+.firebaserc
+
+# Ignore Firebase debug log
+firebase-debug.log
+firebase-debug.*.log
+
+# Ignore Firebase hosting cache
+.firebase/hosting.*

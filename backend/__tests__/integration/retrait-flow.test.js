@@ -4,9 +4,7 @@ const Candidat = require('../../models/Candidat');
 const Transaction = require('../../models/Transaction');
 const mongoose = require('mongoose');
 
-afterAll(async () => {
-    await mongoose.connection.close();
-});
+// afterAll removed as it is handled globally
 
 describe('Flux Retrait Financier', () => {
     let candidatId;

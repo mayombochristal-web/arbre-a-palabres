@@ -36,7 +36,9 @@ const allowedOrigins = [
 ];
 
 // Connexion DB
-connectDB();
+if (process.env.NODE_ENV !== 'test') {
+  connectDB();
+}
 
 // App
 const app = express();

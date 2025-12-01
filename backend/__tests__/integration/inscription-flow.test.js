@@ -14,7 +14,7 @@ beforeAll(() => {
 
 afterAll(async () => {
     if (fs.existsSync(mockFilePath)) fs.unlinkSync(mockFilePath);
-    await mongoose.connection.close();
+    // await mongoose.connection.close(); // Handled globally
 });
 
 describe('Flux Inscription Complet', () => {
