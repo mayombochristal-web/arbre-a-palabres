@@ -1,5 +1,0 @@
-Identifiants de test :
-
-Email: admin@arbre-palabres.ga
-
-Mot de passe: Admin123!
