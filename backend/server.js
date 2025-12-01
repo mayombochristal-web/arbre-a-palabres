@@ -61,11 +61,16 @@ app.use(mongoSanitize());
 
 // CORS – *IMPORTANT*
 // -----------------------------------------------
+// CORS – *IMPORTANT*
+// -----------------------------------------------
+const envAllowedOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : [];
+const allAllowedOrigins = [...allowedOrigins, ...envAllowedOrigins];
+
 app.use(
   cors({
     origin: function (origin, callback) {
       if (!origin) return callback(null, true); // Postman / interne
-      if (allowedOrigins.includes(origin)) return callback(null, true);
+      if (allAllowedOrigins.includes(origin)) return callback(null, true);
       return callback(new Error("Not allowed by CORS"));
     },
     methods: "GET,POST,PUT,DELETE,OPTIONS",

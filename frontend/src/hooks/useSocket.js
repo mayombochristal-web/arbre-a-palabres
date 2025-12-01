@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
 import { toast } from 'react-toastify';
 
-const SOCKET_URL = process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:5001';
+import config from '../config';
+
+const SOCKET_URL = config.API_URL.replace('/api', '');
 
 let socket = null;
 

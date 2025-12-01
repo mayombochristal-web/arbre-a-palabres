@@ -1,7 +1,9 @@
 import React, { useState } from "react";
 import "./InscriptionForm.css";
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:5001/api";
+import config from "../../config";
+
+const API_BASE_URL = config.API_URL;
 
 export default function InscriptionForm() {
   const [role, setRole] = useState("candidat"); // candidat, jury_externe, juge_administratif

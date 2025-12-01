@@ -4,7 +4,9 @@ import axios from 'axios';
 import DebatCard from './DebatCard';
 import './DebatList.css';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
+import config from '../../config';
+
+const API_URL = config.API_URL;
 
 const DebatList = () => {
   const [debats, setDebats] = useState([]);

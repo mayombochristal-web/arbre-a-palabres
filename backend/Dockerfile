@@ -23,4 +23,4 @@ EXPOSE 5001
 USER node
 
 # Commande de démarrage
-CMD ["npm", "start"]
+CMD ["node", "server.js"]
