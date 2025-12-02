@@ -40,17 +40,28 @@ api.interceptors.response.use(
     console.error(`❌ Erreur ${error.response?.status} ${error.config?.url}:`, error.response?.data);
 
     // Gestion des erreurs spécifiques
-    if (error.response?.status === 401) {
-      localStorage.removeItem('authToken');
-      window.location.href = '/connexion';
-    }
+    if (error.response) {
+      // Le serveur a répondu avec un code d'erreur
+      if (error.response.status === 401) {
+        localStorage.removeItem('authToken');
+        window.location.href = '/connexion';
+      }
 
-    if (error.response?.status === 500) {
-      // Erreur serveur
-      return Promise.reject(new Error('Une erreur serveur est survenue. Veuillez réessayer.'));
-    }
+      if (error.response.status === 500) {
+        return Promise.reject(new Error('Une erreur serveur est survenue. Veuillez réessayer plus tard.'));
+      }
 
-    return Promise.reject(error.response?.data || error);
+      // Retourner le message d'erreur du backend s'il existe
+      const message = error.response.data?.error || error.response.data?.message || 'Une erreur est survenue.';
+      return Promise.reject(new Error(message));
+    } else if (error.request) {
+      // La requête a été faite mais pas de réponse (Erreur réseau)
+      console.error('Pas de réponse du serveur', error.request);
+      return Promise.reject(new Error('Impossible de contacter le serveur. Vérifiez votre connexion internet.'));
+    } else {
+      // Erreur lors de la configuration de la requête
+      return Promise.reject(new Error(error.message || 'Une erreur inconnue est survenue.'));
+    }
   }
 );
 

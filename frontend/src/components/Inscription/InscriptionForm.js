@@ -98,7 +98,7 @@ export default function InscriptionForm() {
       }
     } catch (err) {
       console.error(err);
-      setMessage("Impossible de contacter le serveur.");
+      setMessage(err.message || "Impossible de contacter le serveur.");
     }
 
     setLoading(false);

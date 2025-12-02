@@ -1,8 +1,16 @@
 # 🌳 L'Arbre à Palabres
 
+[![Netlify Status](https://api.netlify.com/api/v1/badges/677fe622-ccf9-42b2-a0f6-e4d96c8e5fea/deploy-status)](https://app.netlify.com/projects/arbre-a-palabres7/deploys)
+
 Plateforme éducative de débats pour la jeunesse gabonaise avec système de récompenses financières transparent.
 
 > **"Le dialogue, au cœur du vivre-ensemble"**
+
+## 🌍 Accès public
+
+- 🌐 **Site Web :** https://arbreapalabres.ga  
+- 🚀 **Version Netlify :** https://arbre-a-palabres7.netlify.app  
+- 🔐 **Espace Admin :** /admin (accès restreint)
 
 ## 🎯 Vue d'ensemble
 
@@ -50,7 +58,7 @@ L'Arbre à Palabres est une plateforme moderne qui digitalise la tradition afric
 
 ## 🏗️ Architecture Technique
 
-### Backend (Node.js/Express)
+### Backend (Node.js / Express / MongoDB)
 ```
 backend/
 ├── models/          # Schémas MongoDB (User, Candidat, Debat, Transaction)
@@ -99,7 +107,7 @@ frontend/
 - MongoDB 4.4+
 - npm ou yarn
 
-### Installation Rapide
+### Installation locale
 
 #### Backend
 ```bash
@@ -172,17 +180,19 @@ REACT_APP_API_URL=http://localhost:5001/api
 - ✅ CORS configuré
 - ✅ Validation des inputs
 
-## 🌐 Déploiement
+## 🚀 Déploiement
 
-### Backend (Render)
-- Service Web avec build automatique
-- Variables d'environnement configurées
-- MongoDB Atlas pour la base de données
+### Frontend  
+Déployé via **Netlify**  
+- Builds automatiques depuis GitHub  
+- Configuration SPA via `_redirects`  
+- HTTPS + CDN
 
-### Frontend (Firebase/Vercel)
-- Build optimisé pour production
-- CDN pour assets statiques
-- HTTPS par défaut
+### Backend  
+Déployé sur **Render**  
+- Auto-build  
+- MongoDB Atlas  
+- Healthchecks
 
 ## 📊 Statistiques Clés
 
@@ -211,4 +221,4 @@ Propriété de L'Arbre à Palabres - Tous droits réservés
 ---
 
 **Version :** 2.0.0  
-**Dernière mise à jour :** Novembre 2024
+**Dernière mise à jour :** Décembre 2025

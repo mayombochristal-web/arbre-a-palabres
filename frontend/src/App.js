@@ -1,5 +1,6 @@
 import React from 'react';
 import { Routes, Route, useNavigate } from 'react-router-dom';
+import { GraduationCap, School, BookOpen, Briefcase, Check, Star } from 'lucide-react';
 import Header from './components/Common/Header';
 import Navbar from './components/Common/Navbar';
 import Footer from './components/Common/Footer';
@@ -35,32 +36,45 @@ function Accueil() {
       ageRange: '10-12 ans',
       price: '500 FCFA',
       image: '/images/categories/primaire.png',
+      icon: <School size={40} />,
       description: 'Pour les élèves du primaire passionnés par le débat',
-      color: '#FF6B6B'
+      features: ['Initiation au débat', 'Thèmes adaptés', 'Encadrement bienveillant'],
+      color: '#FF6B6B',
+      gradient: 'linear-gradient(135deg, #FF6B6B 0%, #FF8E8E 100%)'
     },
     {
       name: 'Collège/Lycée',
       ageRange: '13-18 ans',
       price: '1000 FCFA',
       image: '/images/categories/college_lycee.png',
+      icon: <BookOpen size={40} />,
       description: 'Pour les collégiens et lycéens qui veulent s\'exprimer',
-      color: '#4ECDC4'
+      features: ['Compétition inter-établissements', 'Sujets d\'actualité', 'Prix attractifs'],
+      color: '#4ECDC4',
+      gradient: 'linear-gradient(135deg, #4ECDC4 0%, #6EE7E0 100%)',
+      popular: true
     },
     {
       name: 'Universitaire',
       ageRange: '19-40 ans',
       price: '2000 FCFA',
       image: '/images/categories/universitaire.png',
+      icon: <GraduationCap size={40} />,
       description: 'Pour les étudiants et jeunes professionnels',
-      color: '#45B7D1'
+      features: ['Niveau élevé', 'Réseautage', 'Visibilité professionnelle'],
+      color: '#45B7D1',
+      gradient: 'linear-gradient(135deg, #45B7D1 0%, #6CDBEF 100%)'
     },
     {
       name: 'Entrepreneur',
       ageRange: 'Tous âges',
       price: '5000 FCFA',
       image: '/images/categories/entrepreneur.png',
+      icon: <Briefcase size={40} />,
       description: 'Pour les entrepreneurs et leaders d\'opinion',
-      color: '#96CEB4'
+      features: ['Débats stratégiques', 'Opportunités d\'affaires', 'Prestige'],
+      color: '#96CEB4',
+      gradient: 'linear-gradient(135deg, #96CEB4 0%, #B8E4D0 100%)'
     }
   ];
 
@@ -120,21 +134,55 @@ function Accueil() {
 
           <div className="pricing-grid">
             {categories.map((cat, index) => (
-              <div key={index} className="pricing-card" style={{ borderTopColor: cat.color }}>
-                <div className="pricing-image">
-                  <img src={cat.image} alt={cat.name} />
+              <div
+                key={index}
+                className={`pricing-card ${cat.popular ? 'popular' : ''}`}
+                style={{ '--accent-color': cat.color }}
+              >
+                {cat.popular && (
+                  <div className="popular-badge">
+                    <Star size={14} fill="white" /> Populaire
+                  </div>
+                )}
+
+                <div className="card-image-container" style={{ background: cat.gradient }}>
+                  {/* Fallback icon if image fails or while loading */}
+                  <div className="card-icon">{cat.icon}</div>
+                  <img
+                    src={cat.image}
+                    alt={cat.name}
+                    className="card-img"
+                    onError={(e) => e.target.style.display = 'none'}
+                  />
                 </div>
-                <h3>{cat.name}</h3>
-                <div className="age-range">{cat.ageRange}</div>
-                <div className="price">{cat.price}</div>
-                <p className="description">{cat.description}</p>
-                <button
-                  className="btn-join"
-                  style={{ backgroundColor: cat.color }}
-                  onClick={() => navigate('/inscription')}
-                >
-                  Rejoindre
-                </button>
+
+                <div className="card-content">
+                  <h3 style={{ color: cat.color }}>{cat.name}</h3>
+                  <div className="age-badge">{cat.ageRange}</div>
+
+                  <div className="price-tag">
+                    <span className="amount">{cat.price}</span>
+                  </div>
+
+                  <p className="description">{cat.description}</p>
+
+                  <ul className="features-list">
+                    {cat.features.map((feature, idx) => (
+                      <li key={idx}>
+                        <Check size={16} color={cat.color} />
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <button
+                    className="btn-join"
+                    style={{ background: cat.gradient }}
+                    onClick={() => navigate('/inscription')}
+                  >
+                    Rejoindre
+                  </button>
+                </div>
               </div>
             ))}
           </div>
