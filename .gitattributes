@@ -1,0 +1,19 @@
+# ==============================================
+# Normalisation des fins de ligne (CRLF → LF)
+# ==============================================
+
+* text=auto eol=lf
+
+# Garder le binaire intact
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.mp4 binary
+*.mp3 binary
+*.zip binary
+*.pdf binary
+
+# Garder les fichiers Android/Gradle intacts
+*.jar binary
+*.keystore binary
