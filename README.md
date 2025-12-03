@@ -1,21 +1,5 @@
 # 🌳 L'Arbre à Palabres
 
-[![Netlify Status](https://api.netlify.com/api/v1/badges/677fe622-ccf9-42b2-a0f6-e4d96c8e5fea/deploy-status)](https://app.netlify.com/projects/arbre-a-palabres7/deploys)
-
-Plateforme éducative de débats pour la jeunesse gabonaise avec système de récompenses financières transparent.
-
-> **"Le dialogue, au cœur du vivre-ensemble"**
-
-## 🌍 Accès public
-
-- 🌐 **Site Web :** https://arbreapalabres.ga  
-- 🚀 **Version Netlify :** https://arbre-a-palabres7.netlify.app  
-- 🔐 **Espace Admin :** /admin (accès restreint)
-
-## 🎯 Vue d'ensemble
-
-L'Arbre à Palabres est une plateforme moderne qui digitalise la tradition africaine du dialogue sous l'arbre. Elle permet aux jeunes Gabonais de développer leurs compétences oratoires tout en gagnant de l'argent à travers des débats structurés.
-
 ## ✨ Fonctionnalités Principales
 
 ### 🎓 Pour les Candidats

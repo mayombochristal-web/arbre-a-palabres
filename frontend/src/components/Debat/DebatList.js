@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { Clock, PlayCircle, CheckCircle, Layers } from 'lucide-react';
 import DebatCard from './DebatCard';
 import './DebatList.css';
 
@@ -74,25 +75,33 @@ const DebatList = () => {
           <button
             className={filter === 'tous' ? 'active' : ''}
             onClick={() => setFilter('tous')}
+            aria-pressed={filter === 'tous'}
           >
+            <Layers size={18} style={{ marginRight: '8px' }} />
             Tous
           </button>
           <button
             className={filter === 'en_attente' ? 'active' : ''}
             onClick={() => setFilter('en_attente')}
+            aria-pressed={filter === 'en_attente'}
           >
+            <Clock size={18} style={{ marginRight: '8px' }} />
             En attente
           </button>
           <button
             className={filter === 'en_cours' ? 'active' : ''}
             onClick={() => setFilter('en_cours')}
+            aria-pressed={filter === 'en_cours'}
           >
+            <PlayCircle size={18} style={{ marginRight: '8px' }} />
             En cours
           </button>
           <button
             className={filter === 'termine' ? 'active' : ''}
             onClick={() => setFilter('termine')}
+            aria-pressed={filter === 'termine'}
           >
+            <CheckCircle size={18} style={{ marginRight: '8px' }} />
             Terminés
           </button>
         </div>
@@ -112,7 +121,12 @@ const DebatList = () => {
 
       {filteredDebats.length === 0 ? (
         <div className="no-debats">
-          <p>Aucun débat disponible pour le moment</p>
+          <p>
+            {filter === 'tous' && "Aucun débat disponible pour le moment."}
+            {filter === 'en_attente' && "Aucun débat en attente de participants."}
+            {filter === 'en_cours' && "Aucun débat n'est en cours actuellement."}
+            {filter === 'termine' && "Aucun débat terminé à afficher."}
+          </p>
           <button className="btn-primary" onClick={() => navigate('/')}>
             Retour à l'accueil
           </button>

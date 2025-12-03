@@ -82,13 +82,16 @@ app.use(xss());
 // Rate limiting général
 app.use(generalLimiter);
 
-// CORS strict
+// CORS - Configuration consolidée avec support des variables d'environnement
+const envAllowedOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : [];
+const allAllowedOrigins = [...allowedOrigins, ...envAllowedOrigins];
+
 const corsOptions = {
   origin: function (origin, callback) {
-    // Permettre les requêtes sans origin (mobile apps, curl, etc.)
+    // Permettre les requêtes sans origin (mobile apps, curl, Postman, etc.)
     if (!origin) return callback(null, true);
 
-    if (allowedOrigins.indexOf(origin) !== -1) {
+    if (allAllowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
       logger.warn('Origine CORS non autorisée', { origin });
@@ -97,11 +100,14 @@ const corsOptions = {
   },
   credentials: true,
   optionsSuccessStatus: 200,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 };
 
 app.use(cors(corsOptions));
+
+// Corrige les requêtes preflight OPTIONS
+app.options("*", cors(corsOptions));
 
 // Compression des réponses
 app.use(compression());
@@ -115,39 +121,6 @@ app.use((req, res, next) => {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   next();
 });
-
-// CORS – *IMPORTANT*
-// -----------------------------------------------
-// CORS – *IMPORTANT*
-// -----------------------------------------------
-const envAllowedOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : [];
-const allAllowedOrigins = [...allowedOrigins, ...envAllowedOrigins];
-
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      if (!origin) return callback(null, true); // Postman / interne
-      if (allAllowedOrigins.includes(origin)) return callback(null, true);
-      return callback(new Error("Not allowed by CORS"));
-    },
-    methods: "GET,POST,PUT,DELETE,OPTIONS",
-    allowedHeaders: "Content-Type,Authorization",
-    credentials: true,
-  })
-);
-
-// Corrige les requêtes preflight OPTIONS
-app.options("*", cors());
-
-// Limiteur contre le spam
-app.use(
-  "/api/",
-  rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 500, // Augmenté de 100 à 500 pour permettre l'auto-refresh
-    message: "Trop de requêtes, réessayez plus tard.",
-  })
-);
 
 // Fichiers statiques uploadés
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
@@ -203,7 +176,6 @@ app.use(errorHandler);
 // ===============================================
 // 8. LANCEMENT
 // ===============================================
-const logger = require('./config/logger');
 const { initializeSocket } = require('./config/socket');
 
 // Only start server if run directly
