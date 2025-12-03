@@ -24,6 +24,8 @@
     "multer": "^1.4.5-lts.1",
     "react-lazy-load-image-component": "^1.6.3",
     "socket.io": "^4.8.1",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
     "validator": "^13.11.0",
     "winston": "^3.11.0",
     "xss-clean": "^0.1.4"

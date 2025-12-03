@@ -1,16 +1,19 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const Debat = require('../models/Debat');
 const Candidat = require('../models/Candidat');
 const Transaction = require('../models/Transaction');
 const Trophee = require('../models/Trophee');
 const { organiserNouveauDebatSimple, creerDebatDefi, FRAIS_INSCRIPTION } = require('../utils/calculsFinanciers');
 const { protect, admin } = require('../middleware/auth');
+const { debatCreationLimiter } = require('../middleware/rateLimiter');
+const { validate, creerDebatSchema } = require('../middleware/validation');
 
 // @desc    Créer un nouveau débat standard
 // @route   POST /api/debats/standard
 // @access  Admin
-router.post('/standard', protect, admin, async (req, res) => {
+router.post('/standard', protect, admin, debatCreationLimiter, validate(creerDebatSchema), async (req, res) => {
   try {
     const { participantsIds, theme } = req.body;
 
@@ -105,44 +108,70 @@ router.post('/defi', async (req, res) => {
 
     const debatData = creerDebatDefi(participants, miseUnitaire, theme);
 
-    const transactions = [];
-    for (const participant of participants) {
-      participant.soldeActuel -= miseUnitaire;
-      await participant.save();
+    // Démarrer une session de transaction
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
-      const transaction = new Transaction({
-        candidat_id: participant._id,
-        type: 'FRAIS_INSCRIPTION',
-        montant: miseUnitaire,
-        description: `Mise pour le défi: ${theme}`,
-        statut: 'VALIDEE',
-        debat_id: null
-      });
-      await transaction.save();
-      transactions.push(transaction);
-    }
+    try {
+      const transactions = [];
 
-    const nouveauDebat = new Debat(debatData);
-    await nouveauDebat.save();
+      // 1. Débiter les participants
+      for (const participant of participants) {
+        // Vérification ultime du solde dans la transaction
+        const freshParticipant = await Candidat.findById(participant._id).session(session);
+        if (freshParticipant.soldeActuel < miseUnitaire) {
+          throw new Error(`Solde insuffisant pour ${freshParticipant.prenom} ${freshParticipant.nom}`);
+        }
 
-    for (const transaction of transactions) {
-      transaction.debat_id = nouveauDebat._id;
-      await transaction.save();
-    }
+        freshParticipant.soldeActuel -= miseUnitaire;
+        await freshParticipant.save({ session });
 
-    const debatComplet = await Debat.findById(nouveauDebat._id)
-      .populate('participants_ids', 'nom prenom categorie soldeActuel');
-
-    res.status(201).json({
-      success: true,
-      message: 'Défi créé avec succès',
-      debat: debatComplet,
-      cagnotte: {
-        total: debatData.cagnotte_totale,
-        gainVainqueur: debatData.gain_vainqueur,
-        fraisOrganisation: debatData.frais_organisation
+        const transaction = new Transaction({
+          candidat_id: participant._id,
+          type: 'FRAIS_INSCRIPTION',
+          montant: miseUnitaire,
+          description: `Mise pour le défi: ${theme}`,
+          statut: 'VALIDEE',
+          debat_id: null
+        });
+        await transaction.save({ session });
+        transactions.push(transaction);
       }
-    });
+
+      // 2. Créer le débat
+      const nouveauDebat = new Debat(debatData);
+      await nouveauDebat.save({ session });
+
+      // 3. Lier les transactions au débat
+      for (const transaction of transactions) {
+        transaction.debat_id = nouveauDebat._id;
+        await transaction.save({ session });
+      }
+
+      // Valider la transaction
+      await session.commitTransaction();
+      session.endSession();
+
+      const debatComplet = await Debat.findById(nouveauDebat._id)
+        .populate('participants_ids', 'nom prenom categorie soldeActuel');
+
+      res.status(201).json({
+        success: true,
+        message: 'Défi créé avec succès',
+        debat: debatComplet,
+        cagnotte: {
+          total: debatData.cagnotte_totale,
+          gainVainqueur: debatData.gain_vainqueur,
+          fraisOrganisation: debatData.frais_organisation
+        }
+      });
+
+    } catch (error) {
+      // Annuler tout en cas d'erreur
+      await session.abortTransaction();
+      session.endSession();
+      throw error; // Relancer pour le catch global
+    }
 
   } catch (error) {
     console.error('Erreur création défi:', error);

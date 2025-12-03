@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useQuery } from 'react-query';
 import { debatService } from '../../services/api';
 import { formaterStatut, formaterDateHeure } from '../../utils/formatters';
+import { LazyLoadImage } from 'react-lazy-load-image-component';
+import 'react-lazy-load-image-component/src/effects/blur.css';
 import Loading, { LoadingCard } from '../Common/Loading';
 
 const CandidatList = () => {
@@ -143,9 +145,22 @@ const CandidatList = () => {
                           padding: '10px',
                           backgroundColor: '#f8f9fa',
                           borderRadius: '5px',
-                          textAlign: 'center'
+                          textAlign: 'center',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center'
                         }}>
-                          <div style={{ fontWeight: 'bold', color: '#2d5016' }}>{participant.prenom} {participant.nom}</div>
+                          <div style={{ width: '50px', height: '50px', marginBottom: '8px', borderRadius: '50%', overflow: 'hidden', backgroundColor: '#e0e0e0' }}>
+                            <LazyLoadImage
+                              alt={`${participant.prenom} ${participant.nom}`}
+                              src={participant.photoUrl || `https://ui-avatars.com/api/?name=${participant.prenom}+${participant.nom}&background=random`}
+                              effect="blur"
+                              width="100%"
+                              height="100%"
+                              style={{ objectFit: 'cover' }}
+                            />
+                          </div>
+                          <div style={{ fontWeight: 'bold', color: '#2d5016', fontSize: '14px' }}>{participant.prenom} {participant.nom}</div>
                           {participant.scoreFinal > 0 && (
                             <div style={{ fontSize: '12px', color: '#666' }}>Score: {participant.scoreFinal}/20</div>
                           )}

@@ -1,12 +1,11 @@
 import React from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { useNavigate, useLocation } from 'react-router-dom'; // Import de useNavigate et useLocation
+import { useNavigate, useLocation } from 'react-router-dom';
 
-// Navbar n'a plus besoin des props activeTab et setActiveTab
 const Navbar = () => {
   const { isAuthenticated, hasRole } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation(); // Hook pour obtenir le chemin actuel
+  const location = useLocation();
 
   const menuItems = [
     { id: 'accueil', label: 'Accueil', path: '/', public: true },
@@ -26,45 +25,48 @@ const Navbar = () => {
     { id: 'nouveau-debat', label: 'Nouveau Débat', path: '/admin/nouveau-debat', admin: true },
   ];
 
-  // Fonction de navigation corrigée
   const handleNavigation = (path) => {
-    // CORRECTION: Utilisation de navigate() au lieu de window.location.href
-    navigate(path); 
+    navigate(path);
   };
-  
-  // Fonction pour déterminer si un onglet est actif (basé sur l'URL)
+
   const isTabActive = (path) => {
-    // Vérifie si le chemin de la route commence par le chemin de l'élément (gestion des sous-routes)
     return location.pathname === path || (path !== '/' && location.pathname.startsWith(path));
   };
 
-
   return (
-    <nav className="app-nav">
+    <nav className="app-nav" role="navigation" aria-label="Menu principal">
       <div className="nav-container">
         {/* Menu principal */}
-        {menuItems.map(item => (
-          <button
-            key={item.id}
-            // Changement: Utilisation de isTabActive pour la classe CSS
-            className={isTabActive(item.path) ? 'active' : ''}
-            onClick={() => handleNavigation(item.path)}
-          >
-            {item.label}
-          </button>
-        ))}
-        
+        {menuItems.map(item => {
+          const isActive = isTabActive(item.path);
+          return (
+            <button
+              key={item.id}
+              className={isActive ? 'active' : ''}
+              onClick={() => handleNavigation(item.path)}
+              aria-current={isActive ? 'page' : undefined}
+              aria-label={`Aller à la page ${item.label}`}
+            >
+              {item.label}
+            </button>
+          );
+        })}
+
         {/* Menu admin */}
-        {isAuthenticated && hasRole('admin') && adminItems.map(item => (
-          <button
-            key={item.id}
-            // Changement: Utilisation de isTabActive pour la classe CSS
-            className={isTabActive(item.path) ? 'active' : ''}
-            onClick={() => handleNavigation(item.path)}
-          >
-            {item.label}
-          </button>
-        ))}
+        {isAuthenticated && hasRole('admin') && adminItems.map(item => {
+          const isActive = isTabActive(item.path);
+          return (
+            <button
+              key={item.id}
+              className={isActive ? 'active' : ''}
+              onClick={() => handleNavigation(item.path)}
+              aria-current={isActive ? 'page' : undefined}
+              aria-label={`Administration: ${item.label}`}
+            >
+              {item.label}
+            </button>
+          );
+        })}
       </div>
     </nav>
   );

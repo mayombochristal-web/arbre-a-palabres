@@ -28,6 +28,10 @@ const tropheesRoutes = require("./routes/trophees");
 const authRoutes = require("./routes/auth");
 const healthRoutes = require("./routes/health");
 
+// Swagger Documentation
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpecs = require('./config/swagger');
+
 // ===============================================
 // 3. CONFIGURATION
 // ===============================================
@@ -172,6 +176,7 @@ app.get("/sante", (req, res) => {
 // ===============================================
 // 6. ROUTES API
 // ===============================================
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
 app.use("/api/health", healthRoutes);
 app.use("/api/candidats", candidatsRoutes);
 app.use("/api/debats", debatsRoutes);
