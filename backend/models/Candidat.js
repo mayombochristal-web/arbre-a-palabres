@@ -22,7 +22,59 @@ const candidatSchema = new mongoose.Schema({
     type: Date,
     required: [true, 'La date de naissance est obligatoire']
   },
+  email: {
+    type: String,
+    required: [true, 'L\'email est obligatoire'],
+    unique: true,
+    trim: true,
+    lowercase: true,
+    match: [
+      /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/,
+      'Veuillez fournir un email valide'
+    ]
+  },
+  telephone: {
+    type: String,
+    required: [true, 'Le téléphone est obligatoire'],
+    unique: true,
+    trim: true
+  },
+  nationalite: {
+    type: String,
+    required: [true, 'La nationalité est obligatoire'],
+    trim: true
+  },
+  nomEtablissement: {
+    type: String,
+    required: [true, 'L\'établissement est obligatoire'],
+    trim: true
+  },
 
+  // Réseaux Sociaux
+  tiktokLink: {
+    type: String,
+    trim: true
+  },
+  tiktokProfileName: {
+    type: String,
+    trim: true
+  },
+
+  // Informations Administratives
+  categorie: {
+    type: String,
+    required: [true, 'La catégorie est obligatoire'],
+    enum: ['Primaire', 'College/Lycee', 'Universitaire', 'Entrepreneur']
+  },
+  statutAdministratif: {
+    type: String,
+    enum: ['EN_ATTENTE', 'ADMISSIBLE', 'REJETE'],
+    default: 'EN_ATTENTE'
+  },
+  fraisInscriptionPayes: {
+    type: Boolean,
+    default: false
+  },
 
   // Métriques du débat
   scoreFinal: {
@@ -64,7 +116,7 @@ const candidatSchema = new mongoose.Schema({
   age: {
     type: Number,
     min: 10,
-    max: 40
+    max: 100
   }
 }, {
   timestamps: true
