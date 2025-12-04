@@ -23,6 +23,8 @@ import EducationPage from './components/Resources/EducationPage';
 import RewardsPage from './components/Resources/RewardsPage';
 import CulturePage from './components/Resources/CulturePage';
 import CompetitionPage from './components/Resources/CompetitionPage';
+import VisitorRegistration from './components/Visitor/VisitorRegistration';
+import FormationsPage from './components/Formations/FormationsPage';
 
 import './App.css';
 
@@ -213,6 +215,8 @@ function App() {
           {/* Routes publiques */}
           <Route path="/" element={<Accueil />} />
           <Route path="/inscription" element={<InscriptionForm />} />
+          <Route path="/visitor-registration" element={<VisitorRegistration />} />
+          <Route path="/formations" element={<FormationsPage />} />
           <Route path="/debats" element={<DebatList />} />
           <Route path="/candidats" element={<CandidatList />} />
           <Route path="/candidats/:id" element={<CandidatProfile />} />
