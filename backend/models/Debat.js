@@ -34,10 +34,11 @@ const debatSchema = new mongoose.Schema({
     maxlength: [200, 'Le thème ne peut pas dépasser 200 caractères']
   },
 
-  participants_ids: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Candidat',
-    required: true,
+  participants_ids: {
+    type: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Candidat'
+    }],
     validate: {
       validator: function (participants) {
         // Validation côté Mongoose pour s'assurer qu'il y ait exactement 4 participants
@@ -45,7 +46,7 @@ const debatSchema = new mongoose.Schema({
       },
       message: 'Un débat doit avoir exactement 4 participants'
     }
-  }],
+  },
 
   categorie: {
     type: String,
