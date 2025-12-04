@@ -27,6 +27,8 @@ const transactionsRoutes = require("./routes/transactions");
 const tropheesRoutes = require("./routes/trophees");
 const authRoutes = require("./routes/auth");
 const healthRoutes = require("./routes/health");
+const visitorsRoutes = require("./routes/visitors");
+const formationsRoutes = require("./routes/formations");
 
 // Swagger Documentation
 const swaggerUi = require('swagger-ui-express');
@@ -156,6 +158,8 @@ app.use("/api/debats", debatsRoutes);
 app.use("/api/transactions", transactionsRoutes);
 app.use("/api/trophees", tropheesRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/visitors", visitorsRoutes);
+app.use("/api/formations", formationsRoutes);
 
 // ===============================================
 // 7. ERREURS

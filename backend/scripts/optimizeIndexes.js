@@ -18,6 +18,19 @@ async function optimizeIndexes() {
         // ============================================
         console.log('📊 Candidats:');
 
+        // Index uniques pour email et téléphone (prévention doublons)
+        await Candidat.collection.createIndex(
+            { email: 1 },
+            { name: 'email_unique', unique: true, sparse: true }
+        );
+        console.log('  ✅ Index unique: email');
+
+        await Candidat.collection.createIndex(
+            { telephone: 1 },
+            { name: 'telephone_unique', unique: true, sparse: true }
+        );
+        console.log('  ✅ Index unique: téléphone');
+
         // Index composites pour les requêtes fréquentes
         await Candidat.collection.createIndex(
             { categorie: 1, statutAdministratif: 1, scoreFinal: -1 },
@@ -96,6 +109,28 @@ async function optimizeIndexes() {
             { name: 'debat_transactions' }
         );
         console.log('  ✅ Index débat');
+
+        // ============================================
+        // VOTES - Index Optimisés (si collection existe)
+        // ============================================
+        try {
+            const collections = await mongoose.connection.db.listCollections().toArray();
+            const votesExists = collections.some(col => col.name === 'votes');
+
+            if (votesExists) {
+                console.log('\n📊 Votes:');
+
+                await mongoose.connection.db.collection('votes').createIndex(
+                    { candidatId: 1 },
+                    { name: 'candidat_votes' }
+                );
+                console.log('  ✅ Index candidat votes');
+            } else {
+                console.log('\n⚠️  Collection votes non trouvée (sera créée si nécessaire)');
+            }
+        } catch (error) {
+            console.log('\n⚠️  Votes: Collection non disponible');
+        }
 
         // ============================================
         // STATISTIQUES DES INDEX

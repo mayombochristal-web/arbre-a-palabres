@@ -1,0 +1,354 @@
+.formations-page {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    padding: 40px 20px;
+}
+
+.formations-header {
+    text-align: center;
+    margin-bottom: 50px;
+}
+
+.formations-header h1 {
+    font-size: 42px;
+    color: #2d3436;
+    margin-bottom: 15px;
+}
+
+.header-subtitle {
+    font-size: 18px;
+    color: #636e72;
+}
+
+.loading,
+.error-message {
+    text-align: center;
+    padding: 40px;
+    font-size: 18px;
+    color: #636e72;
+}
+
+.error-message {
+    color: #d63031;
+}
+
+.formations-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 30px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.formation-card {
+    background: white;
+    border-radius: 15px;
+    padding: 30px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s, box-shadow 0.3s;
+    position: relative;
+}
+
+.formation-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+}
+
+.formation-badge {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 6px 15px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.formation-card h2 {
+    color: #2d3436;
+    margin-bottom: 15px;
+    font-size: 24px;
+}
+
+.formation-description-short {
+    color: #636e72;
+    margin-bottom: 20px;
+    line-height: 1.6;
+}
+
+.formation-details {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+}
+
+.detail-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.detail-item:last-child {
+    margin-bottom: 0;
+}
+
+.detail-item .icon {
+    font-size: 20px;
+    margin-right: 10px;
+}
+
+.detail-item .label {
+    color: #636e72;
+    margin-right: 8px;
+    font-size: 14px;
+}
+
+.detail-item .value {
+    color: #2d3436;
+    font-weight: 600;
+}
+
+.formation-objectifs {
+    margin-bottom: 20px;
+}
+
+.formation-objectifs h4 {
+    color: #2d3436;
+    margin-bottom: 10px;
+    font-size: 16px;
+}
+
+.formation-objectifs ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.formation-objectifs li {
+    color: #636e72;
+    padding: 5px 0;
+    padding-left: 20px;
+    position: relative;
+    font-size: 14px;
+}
+
+.formation-objectifs li::before {
+    content: '✓';
+    position: absolute;
+    left: 0;
+    color: #00b894;
+    font-weight: bold;
+}
+
+.formation-objectifs li.more {
+    color: #667eea;
+    font-style: italic;
+}
+
+.formation-objectifs li.more::before {
+    content: '•';
+    color: #667eea;
+}
+
+.btn-inscription {
+    width: 100%;
+    padding: 15px;
+    background: linear-gradient(135deg, #00b894 0%, #00cec9 100%);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.btn-inscription:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(0, 184, 148, 0.3);
+}
+
+.no-formations {
+    text-align: center;
+    padding: 60px 20px;
+    color: #636e72;
+}
+
+.no-formations p {
+    font-size: 18px;
+    margin: 10px 0;
+}
+
+/* Modal Styles */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    padding: 20px;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 15px;
+    padding: 40px;
+    max-width: 500px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+}
+
+.modal-close {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #636e72;
+    transition: color 0.2s;
+}
+
+.modal-close:hover {
+    color: #2d3436;
+}
+
+.modal-content h2 {
+    color: #2d3436;
+    margin-bottom: 10px;
+}
+
+.modal-prix {
+    color: #00b894;
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 20px;
+}
+
+.modal-content .input-group {
+    margin-bottom: 20px;
+}
+
+.modal-content .input-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: #2d3436;
+    font-weight: 500;
+    font-size: 14px;
+}
+
+.modal-content .input-group input,
+.modal-content .input-group textarea {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: border-color 0.3s;
+}
+
+.modal-content .input-group input:focus,
+.modal-content .input-group textarea:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.payment-info {
+    background: #fff3cd;
+    padding: 15px;
+    border-radius: 8px;
+    margin: 20px 0;
+    border-left: 4px solid #ffc107;
+}
+
+.payment-info h4 {
+    color: #856404;
+    margin-bottom: 8px;
+}
+
+.payment-info p {
+    color: #856404;
+    margin: 0;
+    font-size: 14px;
+}
+
+.btn-submit {
+    width: 100%;
+    padding: 15px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.btn-submit:hover:not(:disabled) {
+    transform: translateY(-2px);
+}
+
+.btn-submit:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.message {
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.message.success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.message.error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.success-actions {
+    text-align: center;
+    margin-top: 20px;
+}
+
+.btn-close-modal {
+    padding: 12px 30px;
+    background: #636e72;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+@media (max-width: 768px) {
+    .formations-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .formations-header h1 {
+        font-size: 32px;
+    }
+
+    .modal-content {
+        padding: 30px 20px;
+    }
+}
