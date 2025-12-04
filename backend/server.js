@@ -42,6 +42,7 @@ const PORT = process.env.PORT || 5000;
 const allowedOrigins = [
   "http://localhost:3000",
   "https://arbre-a-palabre-9e83a.web.app",
+  "https://arbre-a-palabre-9e83a.firebaseapp.com",
   "https://arbre-palabres-backend.onrender.com"
 ];
 

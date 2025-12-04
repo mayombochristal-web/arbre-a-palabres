@@ -81,6 +81,35 @@ export default function VisitorRegistration() {
         setLoading(false);
     };
 
+    if (isSuccess) {
+        return (
+            <div className="visitor-registration-container">
+                <div className="visitor-registration-card success-view">
+                    <div className="success-icon">🎉</div>
+                    <h2>Inscription Réussie !</h2>
+                    <p className="success-message">
+                        Bienvenue <strong>{formData.prenom}</strong> !<br />
+                        Votre inscription a bien été prise en compte.
+                    </p>
+
+                    <div className="next-steps">
+                        <h3>🚀 Et maintenant ?</h3>
+                        <ul>
+                            <li>📧 Vérifiez votre boîte mail (y compris les spams) pour votre cadeau de bienvenue.</li>
+                            <li>📚 Découvrez notre formation exclusive à 10 000 FCFA.</li>
+                            <li>🎤 Explorez les débats en cours.</li>
+                        </ul>
+                    </div>
+
+                    <div className="action-buttons">
+                        <a href="/formations" className="btn-primary">Voir les Formations</a>
+                        <a href="/" className="btn-secondary">Retour à l'Accueil</a>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="visitor-registration-container">
             <div className="visitor-registration-card">
@@ -89,7 +118,7 @@ export default function VisitorRegistration() {
                     Inscrivez-vous gratuitement pour recevoir toutes les actualités de L'Arbre à Palabres
                 </p>
 
-                {message && (
+                {message && !isSuccess && (
                     <div className={`message ${isSuccess ? 'success' : 'error'}`}>
                         {message}
                     </div>
