@@ -231,7 +231,7 @@ const RetraitPage = () => {
                     <h3>Besoin d'aide ?</h3>
                     <p>
                         Pour toute question concernant les retraits, contactez-nous à{' '}
-                        <a href="mailto:support@arbre-palabres.ga">support@arbre-palabres.ga</a>
+                        <a href="mailto:mayombochristal@gmail.com">mayombochristal@gmail.com</a>
                     </p>
                 </div>
             </div>
