@@ -157,6 +157,16 @@ export const transactionService = {
   getAll: (params = {}) => api.get('/transactions', { params })
 };
 
+// Services pour les formations
+export const formationService = {
+  getAll: (params = {}) => api.get('/formations', { params }),
+  getById: (id) => api.get(`/formations/${id}`),
+  inscrire: (id, data) => api.post(`/formations/${id}/inscription`, data),
+  create: (data) => api.post('/formations', data),
+  update: (id, data) => api.put(`/formations/${id}`, data),
+  delete: (id) => api.delete(`/formations/${id}`)
+};
+
 // Services pour les trophées
 export const tropheeService = {
   // Création et gestion

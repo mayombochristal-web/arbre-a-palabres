@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './FormationsPage.css';
 import config from '../../config';
+import { formationService } from '../../services/api';
 
 const API_BASE_URL = config.API_URL;
 
@@ -17,8 +18,9 @@ export default function FormationsPage() {
 
     const fetchFormations = async () => {
         try {
-            const response = await fetch(`${API_BASE_URL}/formations`);
-            const data = await response.json();
+            // Utilisation du service centralisé qui inclut la logique de retry
+            const response = await formationService.getAll();
+            const data = response.data;
 
             if (data.success) {
                 setFormations(data.formations);
@@ -26,7 +28,7 @@ export default function FormationsPage() {
                 setError('Erreur lors du chargement des formations');
             }
         } catch (err) {
-            setError('Impossible de charger les formations');
+            setError(err.message || 'Impossible de charger les formations (Serveur injoignable après plusieurs tentatives).');
             console.error(err);
         } finally {
             setLoading(false);
