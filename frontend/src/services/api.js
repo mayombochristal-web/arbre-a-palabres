@@ -14,6 +14,12 @@ const api = axios.create({
 });
 
 // Intercepteur pour les requêtes
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000; // 1 sec initial delay
+
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Intercepteur pour les requêtes - inchangé
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('authToken');
@@ -30,19 +36,38 @@ api.interceptors.request.use(
   }
 );
 
-// Intercepteur pour les réponses
+// Intercepteur pour les réponses avec Retry Logic
 api.interceptors.response.use(
   (response) => {
     console.log(`✅ ${response.status} ${response.config.url}`);
     return response;
   },
-  (error) => {
+  async (error) => {
+    const originalRequest = error.config;
+
+    // Retry logic pour les erreurs réseau ou 503 (Service Unavailable)
+    if (
+      (error.message === 'Network Error' || error.response?.status === 503 || error.code === 'ECONNABORTED') &&
+      !originalRequest._retry &&
+      (originalRequest._retryCount || 0) < MAX_RETRIES
+    ) {
+      originalRequest._retry = true;
+      originalRequest._retryCount = (originalRequest._retryCount || 0) + 1;
+
+      const delay = RETRY_DELAY * Math.pow(2, originalRequest._retryCount - 1); // Exponential backoff
+      console.log(`⚠️ Tentative de reconnexion ${originalRequest._retryCount}/${MAX_RETRIES} dans ${delay}ms...`);
+
+      await sleep(delay);
+      return api(originalRequest);
+    }
+
     console.error(`❌ Erreur ${error.response?.status} ${error.config?.url}:`, error.response?.data);
 
     // Gestion des erreurs spécifiques
     if (error.response) {
       // Le serveur a répondu avec un code d'erreur
-      if (error.response.status === 401) {
+      if (error.response.status === 401 && !originalRequest.url.includes('/auth/login')) {
+        // Don't redirect if it's a login attempt failing
         localStorage.removeItem('authToken');
         window.location.href = '/connexion';
       }
@@ -57,7 +82,7 @@ api.interceptors.response.use(
     } else if (error.request) {
       // La requête a été faite mais pas de réponse (Erreur réseau)
       console.error('Pas de réponse du serveur', error.request);
-      return Promise.reject(new Error('Impossible de contacter le serveur. Vérifiez votre connexion internet.'));
+      return Promise.reject(new Error('Impossible de contacter le serveur. Vérifiez votre connexion internet ou le serveur démarre (attendre ~1min).'));
     } else {
       // Erreur lors de la configuration de la requête
       return Promise.reject(new Error(error.message || 'Une erreur inconnue est survenue.'));

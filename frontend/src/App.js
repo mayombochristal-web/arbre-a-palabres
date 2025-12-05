@@ -208,12 +208,16 @@ function Accueil() {
 function App() {
   // Wake up backend on load
   React.useEffect(() => {
-    const wakeUpBackend = async () => {
+    const wakeUpBackend = async (retries = 3) => {
+      const baseUrl = config.API_URL.replace('/api', '');
       try {
-        await fetch(`${config.API_URL.replace('/api', '')}/sante`);
-        console.log('Backend pinged successfully');
+        await fetch(`${baseUrl}/sante`);
+        console.log('✅ Backend pinged successfully');
       } catch (error) {
-        console.log('Backend ping failed (might be waking up)', error);
+        console.log(`⚠️ Backend ping failed (attempt ${4 - retries}/3). might be waking up...`, error);
+        if (retries > 0) {
+          setTimeout(() => wakeUpBackend(retries - 1), 2000);
+        }
       }
     };
     wakeUpBackend();
