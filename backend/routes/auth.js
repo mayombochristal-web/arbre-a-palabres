@@ -10,3 +10,4 @@ router.post('/login', authLimiter, validate(loginSchema), login);
 router.get('/profile', protect, getMe);
 
 module.exports = router;
+
