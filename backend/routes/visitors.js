@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Visitor = require('../models/Visitor');
-const { envoyerBienvenue, notifierAdmin } = require('../services/notificationService');
+const notificationService = require('../services/notificationService');
 const { protect, admin } = require('../middleware/auth');
 const logger = require('../config/logger');
 
@@ -41,16 +41,15 @@ router.post('/inscription', async (req, res) => {
 
         await nouveauVisiteur.save();
 
-        // Envoyer email de bienvenue
+        // Envoyer email de bienvenue via Service Class
         try {
-            await envoyerBienvenue(nouveauVisiteur);
+            await notificationService.sendWelcome(nouveauVisiteur);
         } catch (emailError) {
             logger.error('Erreur envoi email bienvenue', { error: emailError.message });
-            // Ne pas bloquer l'inscription si l'email échoue
         }
 
-        // Notifier l'admin
-        notifierAdmin(
+        // Notifier l'admin via Service Class
+        notificationService.notifyAdmin(
             '🌟 Nouveau Visiteur Inscrit !',
             `<p>Un nouveau visiteur vient de s'inscrire sur la plateforme.</p>
              <ul>

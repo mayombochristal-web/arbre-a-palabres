@@ -4,7 +4,7 @@ const Candidat = require('../models/Candidat');
 const Transaction = require('../models/Transaction');
 const { soumettreCandidature } = require('../utils/calculsFinanciers');
 const { parseAirtelMessage } = require('../utils/paymentParser');
-const { notifierAdmin } = require('../services/notificationService');
+const notificationService = require('../services/notificationService');
 const { protect, admin } = require('../middleware/auth');
 const logger = require('../config/logger');
 
@@ -102,7 +102,7 @@ router.post('/inscription', async (req, res) => {
     });
 
     // Notifier l'admin
-    notifierAdmin(
+    notificationService.notifyAdmin(
       '🎤 Nouvelle Candidature Reçue !',
       `<p>Un nouveau candidat s'est inscrit.</p>
        <ul>
