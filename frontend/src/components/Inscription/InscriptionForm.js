@@ -98,7 +98,7 @@ export default function InscriptionForm() {
       }
     } catch (err) {
       console.error(err);
-      setMessage(err.message || "Impossible de contacter le serveur.");
+      setMessage("Le serveur est peut-être en mode veille (démarrage ~1 min). Veuillez patienter et réessayer. Vérifiez aussi votre connexion.");
     }
 
     setLoading(false);
@@ -120,6 +120,14 @@ export default function InscriptionForm() {
             <option value="jury_externe">Membre du Jury Externe</option>
             <option value="juge_administratif">Juge Administratif</option>
           </select>
+        </div>
+
+        {/* Lien Inscription Visiteur */}
+        <div style={{ textAlign: 'center', margin: '15px 0', padding: '10px', backgroundColor: '#f0f2f5', borderRadius: '8px' }}>
+          <span style={{ fontSize: '0.9rem', color: '#666' }}>Vous souhaitez juste suivre les débats ? </span>
+          <a href="/visitor-registration" style={{ color: '#4CAF50', fontWeight: 'bold', textDecoration: 'none' }}>
+            Inscrivez-vous comme Visiteur (Gratuit)
+          </a>
         </div>
 
         {/* Choix Type Candidat (si Candidat) */}

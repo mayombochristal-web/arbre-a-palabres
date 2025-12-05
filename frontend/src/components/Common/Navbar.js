@@ -9,7 +9,9 @@ const Navbar = () => {
 
   const menuItems = [
     { id: 'accueil', label: 'Accueil', path: '/', public: true },
-    { id: 'inscription', label: 'Inscription', path: '/inscription', public: true },
+    { id: 'inscription', label: 'Inscription Candidat', path: '/inscription', public: true },
+    { id: 'visitor', label: 'Inscription Visiteur', path: '/visitor-registration', public: true },
+    { id: 'formations', label: 'Formations', path: '/formations', public: true },
     { id: 'debats', label: 'Débats', path: '/debats', public: true },
     { id: 'classement', label: 'Classement', path: '/classement', public: true },
     { id: 'candidats', label: 'Candidats', path: '/candidats', public: true },

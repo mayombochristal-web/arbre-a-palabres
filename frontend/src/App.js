@@ -1,4 +1,5 @@
 import React from 'react';
+import config from './config';
 import { Routes, Route, useNavigate } from 'react-router-dom';
 import { GraduationCap, School, BookOpen, Briefcase, Check, Star } from 'lucide-react';
 import Header from './components/Common/Header';
@@ -205,6 +206,19 @@ function Accueil() {
 }
 
 function App() {
+  // Wake up backend on load
+  React.useEffect(() => {
+    const wakeUpBackend = async () => {
+      try {
+        await fetch(`${config.API_URL.replace('/api', '')}/sante`);
+        console.log('Backend pinged successfully');
+      } catch (error) {
+        console.log('Backend ping failed (might be waking up)', error);
+      }
+    };
+    wakeUpBackend();
+  }, []);
+
   return (
     <div className="App">
       <Header />

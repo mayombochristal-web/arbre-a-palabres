@@ -20,7 +20,7 @@ const LoginPage = () => {
         if (result.success) {
             navigate('/admin');
         } else {
-            setError(result.error || 'Erreur de connexion');
+            setError(result.error || 'Erreur de connexion. Si le problème persiste, le serveur est peut-être en maintenance.');
         }
         setLoading(false);
     };

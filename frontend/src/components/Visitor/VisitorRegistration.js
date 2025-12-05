@@ -74,8 +74,8 @@ export default function VisitorRegistration() {
                 setMessage(data.error || 'Une erreur est survenue.');
             }
         } catch (err) {
-            console.error(err);
-            setMessage('Impossible de contacter le serveur.');
+            console.error('Erreur inscription:', err);
+            setMessage('Le serveur est peut-être en mode veille (démarrage ~1 min). Veuillez patienter et réessayer. Vérifiez aussi votre connexion.');
         }
 
         setLoading(false);
