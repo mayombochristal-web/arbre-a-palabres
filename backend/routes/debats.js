@@ -9,6 +9,44 @@ const { organiserNouveauDebatSimple, creerDebatDefi, FRAIS_INSCRIPTION } = requi
 const { protect, admin } = require('../middleware/auth');
 const { debatCreationLimiter } = require('../middleware/rateLimiter');
 const { validate, creerDebatSchema } = require('../middleware/validation');
+const seedDebatesLogic = require('../seeds/seedDebates'); // Hypothetical import, I'll inline logic for simplicity or require properly
+
+// @desc    Seeder les débats (Maintenance)
+// @route   POST /api/debats/seed
+// @access  Admin
+router.post('/seed', protect, admin, async (req, res) => {
+  try {
+    const themes = [
+      { theme: "Pourquoi j'aime ma culture gabonaise", categorie: "Primaire" },
+      { theme: "La forêt gabonaise : notre trésor à protéger", categorie: "Primaire" },
+      { theme: "Les réseaux sociaux : danger", categorie: "College/Lycee" },
+      { theme: "La jeunesse gabonaise moteur du changement ?", categorie: "College/Lycee" },
+      { theme: "Innovation et économie gabonaise", categorie: "Universitaire" }
+    ];
+
+    let count = 0;
+    for (const item of themes) {
+      const exists = await Debat.findOne({ theme_debat: item.theme });
+      if (!exists) {
+        await new Debat({
+          theme_debat: item.theme,
+          categorie: item.categorie,
+          statut: 'en_attente',
+          type_debat: 'standard',
+          participants_ids: [],
+          cagnotte_totale: 0,
+          frais_organisation: 0,
+          gain_vainqueur: 0,
+          frais_unitaire: 0
+        }).save();
+        count++;
+      }
+    }
+    res.json({ success: true, message: `${count} débats ajoutés.` });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 
 // @desc    Créer un nouveau débat standard
 // @route   POST /api/debats/standard

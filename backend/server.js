@@ -57,6 +57,14 @@ if (process.env.NODE_ENV !== 'test') {
 // App
 const app = express();
 
+// Middleware de Logging (Recommandé pour debugging)
+app.use((req, res, next) => {
+  if (req.url !== '/health' && req.url !== '/sante') {
+    logger.info(`${req.method} ${req.url} | Origin: ${req.headers.origin || 'N/A'}`);
+  }
+  next();
+});
+
 // ===============================================
 // 4. MIDDLEWARES DE SÉCURITÉ
 // ===============================================
@@ -150,6 +158,15 @@ app.get("/", (req, res) => {
 
 app.get("/sante", (req, res) => {
   res.status(200).json({ status: "OK", ts: Date.now() });
+});
+
+// Standard Health Check (Recommended)
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'OK',
+    timestamp: new Date().toISOString(),
+    service: 'backend-api'
+  });
 });
 
 // ===============================================
