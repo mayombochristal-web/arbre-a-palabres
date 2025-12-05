@@ -10,17 +10,28 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const helmet = require("helmet");
-const rateLimit = require("express-rate-limit");
 const mongoSanitize = require("express-mongo-sanitize");
+const xss = require('xss-clean');
+const compression = require('compression');
 const path = require("path");
 
 const connectDB = require("./config/database");
+const logger = require('./config/logger');
+const { generalLimiter } = require('./middleware/rateLimiter');
 
 // Importation des routes
 const candidatsRoutes = require("./routes/candidats");
 const debatsRoutes = require("./routes/debats");
 const transactionsRoutes = require("./routes/transactions");
 const tropheesRoutes = require("./routes/trophees");
+const authRoutes = require("./routes/auth");
+const healthRoutes = require("./routes/health");
+const visitorsRoutes = require("./routes/visitors");
+const formationsRoutes = require("./routes/formations");
+
+// Swagger Documentation
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpecs = require('./config/swagger');
 
 // ===============================================
 // 3. CONFIGURATION
@@ -30,55 +41,92 @@ const PORT = process.env.PORT || 5000;
 const allowedOrigins = [
   "http://localhost:3000",
   "https://arbre-a-palabre-9e83a.web.app",
-  "https://arbre-palabres-backend.onrender.com"
+  "https://arbre-a-palabre-9e83a.firebaseapp.com",
+  "https://arbre-palabres-backend.onrender.com",
+  "https://arbreapalabres.ga",
+  "https://www.arbreapalabres.ga",
+  "https://www.arbre-a-palabre-9e83a.web.app"
 ];
 
 // Connexion DB
-connectDB();
+if (process.env.NODE_ENV !== 'test') {
+  connectDB();
+}
 
 // App
 const app = express();
 
+// Middleware de Logging (Recommandé pour debugging)
+app.use((req, res, next) => {
+  if (req.url !== '/health' && req.url !== '/sante') {
+    logger.info(`${req.method} ${req.url} | Origin: ${req.headers.origin || 'N/A'}`);
+  }
+  next();
+});
+
 // ===============================================
-// 4. MIDDLEWARES
+// 4. MIDDLEWARES DE SÉCURITÉ
 // ===============================================
 
-// Body parser
-app.use(express.json());
-
-// Sécurité
-app.use(helmet());
-app.use(mongoSanitize());
-
-// CORS – *IMPORTANT*
-// -----------------------------------------------
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      if (!origin) return callback(null, true); // Postman / interne
-      if (allowedOrigins.includes(origin)) return callback(null, true);
-      return callback(new Error("Not allowed by CORS"));
+// Helmet - Headers de sécurité HTTP
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "https:"],
     },
-    methods: "GET,POST,PUT,DELETE,OPTIONS",
-    allowedHeaders: "Content-Type,Authorization",
-    credentials: true,
-  })
-);
+  },
+  crossOriginEmbedderPolicy: false,
+}));
 
-// Corrige les requêtes preflight OPTIONS
-app.options("*", cors());
+// Sanitization contre les injections NoSQL
+app.use(mongoSanitize({
+  replaceWith: '_',
+  onSanitize: ({ req, key }) => {
+    logger.warn('Tentative d\'injection NoSQL détectée', { ip: req.ip, key });
+  },
+}));
 
-// Limiteur contre le spam
-app.use(
-  "/api/",
-  rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 100,
-    message: "Trop de requêtes, réessayez plus tard.",
-  })
-);
+// Protection XSS
+app.use(xss());
 
-// Fichiers statiques uploadés
+// Rate limiting général (APRES /health idealement, mais avec le SKIP dans le fichier rateLimiter c'est bon)
+app.use(generalLimiter);
+
+// CORS - Configuration consolidée avec support des variables d'environnement
+const envAllowedOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : [];
+const allAllowedOrigins = [...allowedOrigins, ...envAllowedOrigins];
+
+const corsOptions = {
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
+    if (allAllowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      logger.warn('Origine CORS non autorisée', { origin });
+      callback(new Error('Non autorisé par CORS'));
+    }
+  },
+  credentials: true,
+  optionsSuccessStatus: 200,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
+
+app.use(compression());
+app.use(express.json({ limit: '10mb', charset: 'utf-8' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb', charset: 'utf-8' }));
+
+app.use((req, res, next) => {
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  next();
+});
+
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // ===============================================
@@ -102,13 +150,28 @@ app.get("/sante", (req, res) => {
   res.status(200).json({ status: "OK", ts: Date.now() });
 });
 
+// Standard Health Check (Recommended)
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'OK',
+    timestamp: new Date().toISOString(),
+    service: 'backend-api'
+  });
+});
+
 // ===============================================
 // 6. ROUTES API
 // ===============================================
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
+app.use("/api/health", healthRoutes);
 app.use("/api/candidats", candidatsRoutes);
 app.use("/api/debats", debatsRoutes);
 app.use("/api/transactions", transactionsRoutes);
 app.use("/api/trophees", tropheesRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/visitors", visitorsRoutes);
+app.use("/api/formations", formationsRoutes);
+app.use("/api/test-email", require("./routes/testEmail"));
 
 // ===============================================
 // 7. ERREURS
@@ -120,24 +183,26 @@ app.use((req, res) => {
   });
 });
 
-// ===============================================
-// 7. MIDDLEWARE DE GESTION D'ERREURS (DOIT ÊTRE LE DERNIER)
-// ===============================================
 const errorHandler = require('./middleware/errorHandler');
 app.use(errorHandler);
 
 // ===============================================
 // 8. LANCEMENT
 // ===============================================
-const logger = require('./config/logger');
+const { initializeSocket } = require('./config/socket');
 
-const server = app.listen(PORT, () =>
-  logger.info(`🚀 Backend opérationnel sur le port ${PORT}`)
-);
+if (require.main === module) {
+  const server = app.listen(PORT, () =>
+    logger.info(`🚀 Backend opérationnel sur le port ${PORT}`)
+  );
 
-process.on("unhandledRejection", (err) => {
-  logger.error("Unhandled Promise Rejection:", { error: err.message, stack: err.stack });
-  server.close(() => process.exit(1));
-});
+  const io = initializeSocket(server);
+  logger.info('✅ Socket.io initialisé');
+
+  process.on("unhandledRejection", (err) => {
+    logger.error("Unhandled Promise Rejection:", { error: err.message, stack: err.stack });
+    server.close(() => process.exit(1));
+  });
+}
 
 module.exports = app;
