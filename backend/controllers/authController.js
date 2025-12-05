@@ -28,3 +28,14 @@ exports.register = async (req, res) => {
         return ApiResponse.error(res, "Erreur serveur", 500);
     }
 };
+
+exports.getMe = async (req, res) => {
+    try {
+        if (!req.user) {
+            return ApiResponse.error(res, "Utilisateur non trouvé", 404);
+        }
+        return ApiResponse.success(res, req.user, "Profil récupéré");
+    } catch (error) {
+        return ApiResponse.error(res, "Erreur serveur", 500);
+    }
+};
