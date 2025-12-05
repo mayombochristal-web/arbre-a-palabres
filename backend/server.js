@@ -1,11 +1,3 @@
-// ===============================================
-// 1. CHARGEMENT DES VARIABLES D'ENVIRONNEMENT
-// ===============================================
-require("dotenv").config();
-
-// ===============================================
-// 2. IMPORTATION DES DÉPENDANCES
-// ===============================================
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
@@ -17,6 +9,7 @@ const path = require("path");
 
 const connectDB = require("./config/database");
 const logger = require('./config/logger');
+// Import custom rate limiter to fix Render 429 errors
 const { generalLimiter } = require('./middleware/rateLimiter');
 
 // Importation des routes
@@ -25,9 +18,11 @@ const debatsRoutes = require("./routes/debats");
 const transactionsRoutes = require("./routes/transactions");
 const tropheesRoutes = require("./routes/trophees");
 const authRoutes = require("./routes/auth");
-const healthRoutes = require("./routes/health");
 const visitorsRoutes = require("./routes/visitors");
 const formationsRoutes = require("./routes/formations");
+const healthRoutes = require("./routes/health");
+// 🔧 1. Importer la route (Requested by User)
+const testEmailRoute = require("./routes/testEmail");
 
 // Swagger Documentation
 const swaggerUi = require('swagger-ui-express');
@@ -68,7 +63,7 @@ app.use((req, res, next) => {
 // 4. MIDDLEWARES DE SÉCURITÉ
 // ===============================================
 
-// Helmet - Headers de sécurité HTTP
+// Helmet
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
@@ -81,7 +76,7 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false,
 }));
 
-// Sanitization contre les injections NoSQL
+// Sanitization
 app.use(mongoSanitize({
   replaceWith: '_',
   onSanitize: ({ req, key }) => {
@@ -89,13 +84,13 @@ app.use(mongoSanitize({
   },
 }));
 
-// Protection XSS
+// XSS
 app.use(xss());
 
-// Rate limiting général (APRES /health idealement, mais avec le SKIP dans le fichier rateLimiter c'est bon)
+// Rate limiting (Uses the custom one with SKIP for /health)
 app.use(generalLimiter);
 
-// CORS - Configuration consolidée avec support des variables d'environnement
+// CORS
 const envAllowedOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : [];
 const allAllowedOrigins = [...allowedOrigins, ...envAllowedOrigins];
 
@@ -171,7 +166,9 @@ app.use("/api/trophees", tropheesRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/visitors", visitorsRoutes);
 app.use("/api/formations", formationsRoutes);
-app.use("/api/test-email", require("./routes/testEmail"));
+
+// 🔧 2. Activer la route (Requested by User)
+app.use("/api/test-email", testEmailRoute);
 
 // ===============================================
 // 7. ERREURS
