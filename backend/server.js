@@ -43,7 +43,10 @@ const allowedOrigins = [
   "http://localhost:3000",
   "https://arbre-a-palabre-9e83a.web.app",
   "https://arbre-a-palabre-9e83a.firebaseapp.com",
-  "https://arbre-palabres-backend.onrender.com"
+  "https://arbre-palabres-backend.onrender.com",
+  "https://arbreapalabres.ga",
+  "https://www.arbreapalabres.ga",
+  "https://www.arbre-a-palabre-9e83a.web.app"
 ];
 
 // Connexion DB
