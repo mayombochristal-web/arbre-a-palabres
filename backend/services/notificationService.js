@@ -304,11 +304,29 @@ const envoyerBienvenue = async (visiteur) => {
     });
 };
 
+/**
+ * Notifier l'administrateur
+ * @param {string} subject - Sujet de l'email
+ * @param {string} message - Message HTML
+ * @returns {Promise<void>}
+ */
+const notifierAdmin = async (subject, message) => {
+    const ADMIN_EMAIL = 'mayombochristal@gmail.com';
+    try {
+        await emailService.sendEmail(ADMIN_EMAIL, subject, message);
+        logger.info('Notification admin envoyée', { subject, to: ADMIN_EMAIL });
+    } catch (error) {
+        logger.error('Erreur notification admin', { error: error.message });
+        // On ne throw pas pour ne pas bloquer le flux principal
+    }
+};
+
 module.exports = {
     envoyerNotification,
     notifierNouveauDebat,
     notifierResultatDebat,
     proposerFormation,
     envoyerOffreFormationTousVisiteurs,
-    envoyerBienvenue
+    envoyerBienvenue,
+    notifierAdmin
 };

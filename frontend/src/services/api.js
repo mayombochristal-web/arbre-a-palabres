@@ -14,8 +14,8 @@ const api = axios.create({
 });
 
 // Intercepteur pour les requêtes
-const MAX_RETRIES = 3;
-const RETRY_DELAY = 1000; // 1 sec initial delay
+const MAX_RETRIES = 6;
+const RETRY_DELAY = 2000; // 2 sec initial delay
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -82,7 +82,7 @@ api.interceptors.response.use(
     } else if (error.request) {
       // La requête a été faite mais pas de réponse (Erreur réseau)
       console.error('Pas de réponse du serveur', error.request);
-      return Promise.reject(new Error('Impossible de contacter le serveur. Vérifiez votre connexion internet ou le serveur démarre (attendre ~1min).'));
+      return Promise.reject(new Error('Impossible de contacter le serveur. Vérifiez votre connexion internet ou patientez, le serveur démarre (cela peut prendre jusqu\'à 2 min).'));
     } else {
       // Erreur lors de la configuration de la requête
       return Promise.reject(new Error(error.message || 'Une erreur inconnue est survenue.'));

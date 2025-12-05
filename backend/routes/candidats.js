@@ -4,6 +4,7 @@ const Candidat = require('../models/Candidat');
 const Transaction = require('../models/Transaction');
 const { soumettreCandidature } = require('../utils/calculsFinanciers');
 const { parseAirtelMessage } = require('../utils/paymentParser');
+const { notifierAdmin } = require('../services/notificationService');
 const { protect, admin } = require('../middleware/auth');
 const logger = require('../config/logger');
 
@@ -99,6 +100,20 @@ router.post('/inscription', async (req, res) => {
       categorie: resultatsCalculs.categorie,
       fraisPayes
     });
+
+    // Notifier l'admin
+    notifierAdmin(
+      '🎤 Nouvelle Candidature Reçue !',
+      `<p>Un nouveau candidat s'est inscrit.</p>
+       <ul>
+          <li><strong>Nom:</strong> ${nouveauCandidat.nom} ${nouveauCandidat.prenom}</li>
+          <li><strong>Catégorie:</strong> ${nouveauCandidat.categorie}</li>
+          <li><strong>Établissement:</strong> ${nouveauCandidat.nomEtablissement}</li>
+          <li><strong>Email:</strong> ${nouveauCandidat.email}</li>
+          <li><strong>Téléphone:</strong> ${nouveauCandidat.telephone}</li>
+          <li><strong>Statut Paiement:</strong> ${fraisPayes ? '<span style="color:green">PAYÉ</span>' : '<span style="color:red">EN ATTENTE</span>'}</li>
+       </ul>`
+    );
 
     res.status(201).json({
       success: true,
