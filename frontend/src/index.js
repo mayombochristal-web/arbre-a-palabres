@@ -37,4 +37,4 @@ root.render(
 // Si vous voulez que votre application fonctionne hors ligne et se charge plus rapidement,
 // changez unregister() pour register() ci-dessous. Notez que cela vient avec quelques pièges.
 // En savoir plus sur les service workers: https://cra.link/PWA
-serviceWorkerRegistration.register();
+serviceWorkerRegistration.unregister();
