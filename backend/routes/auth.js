@@ -14,8 +14,17 @@ router.use((req, res, next) => {
 // Register
 router.post('/register', registrationLimiter, register);
 
-// Login
+// Login (POST only)
 router.post('/login', authLimiter, validate(loginSchema), login);
+
+// Login info for GET requests (browser testing)
+router.get('/login', (req, res) => {
+    res.json({
+        success: false,
+        message: "Use POST method with email and password to login",
+        required: { email: "string", password: "string" }
+    });
+});
 
 // Profil utilisateur connecté
 router.get('/profile', protect, getMe);
