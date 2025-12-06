@@ -97,6 +97,13 @@ const debatSchema = new mongoose.Schema({
     default: null
   },
 
+  // Trophée en jeu (Optionnel)
+  trophee_en_jeu: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Trophee',
+    default: null
+  },
+
   // Référence aux juges (ou modérateur)
   juge_id: {
     type: mongoose.Schema.Types.ObjectId,
